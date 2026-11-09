@@ -1,0 +1,91 @@
+IDEA DE JUEGO:
+
+La idea: Despiertas en la cima de un faro solitario durante una tormenta. Debes explorar el lugar, encender la linterna, leer notas dispersas y resolver un rompecabezas para abrir la puerta principal.
+
+Mecánica principal: Recoger objetos, interactuar con palancas/puertas y un sistema de inventario muy básico.
+
+Puzle de Entrada 1: El Código de las Mareas (Acceder al faro)
+El problema: La puerta principal del faro está cerrada con un candado antiguo de combinación numérica o de símbolos, pero no hay ninguna nota directa con la clave.
+
+La pista ambiental: Al lado de la puerta, hay una mesa de navegación con una bitácora abierta del antiguo farero y un mapa de la costa. El texto menciona: "Hoy la marea estuvo inusualmente alta a medianoche, sumergiendo las rocas del muelle bajo 3 metros de agua, justo 2 horas después de la puesta de sol a las 8 PM". En la pared hay una tabla de mareas o un reloj de sol grabado en piedra.
+
+La solución: El jugador debe deducir la hora o calcular el número clave combinando las horas mencionadas (por ejemplo, hora de la puesta + horas de diferencia, o contar las marcas de marea en el muelle exterior). Introducir ese código en el candado abre la puerta.
+
+Por qué funciona: Obliga al jugador a leer los elementos del escenario y conectar pistas sencillas sin requerir scripts complejos (solo un disparador que detecte si el jugador puso los números correctos).
+
+Puzle 2: Los Postes de Navegación Espejo (Regresar al faro)
+1. El problema: El jugador da la vuelta confiado para regresar al faro por el camino por el que vino, pero descubre que el sendero de tierra se corta abruptamente en un risco o está bloqueado por una formación rocosa imprevista. El faro se ve a lo lejos, pero está completamente inaccesible por tierra.
+
+2. La pista ambiental: Al explorar los alrededores de este nuevo sendero cortado, el jugador encuentra tres antiguos postes de piedra o mojones de navegación antiguos que han emergido del suelo (algo que no estaba cuando llegó).
+Cerca de ahí, en una roca plana, hay un grabado desgastado con los puntos cardinales o las fases de la luna, y una nota o inscripción que reza: "Para enderezar el camino de los ciegos, el reflejo debe mirar al oeste, el origen al norte y el fin al abismo".
+
+3. La solución: El jugador debe acercarse a cada uno de los tres postes de piedra y girarlos o interactuar con ellos para orientar sus símbolos o placas grabadas hacia las direcciones correctas descritas en la pista (Norte, Oeste, etc.).
+Una vez que los tres postes están alineados correctamente, se escucha un sonido grave de piedra deslizándose: las rocas que bloqueaban el paso se mueven lentamente, revelando de nuevo el camino despejado y seguro que conecta directamente con la puerta principal del faro.
+
+Puzle 3: El Circuito de Vapor y Contrapesos (Acceder a la cúspide)
+1. El problema
+El jugador logra abrir la puerta pesada y entra al faro buscando refugio, cerrando la puerta tras de sí. Sin embargo, para llegar a la cima donde está la lámpara principal y terminar la demo, se encuentra con que la escalera de caracol de hierro está totalmente bloqueada: un mecanismo de contrapesos está atascado y la trampilla superior requiere presión de vapor para abrirse.
+
+2. La pista ambiental
+En la planta baja del faro, iluminada solo por la linterna, hay un gran generador o caldera de hierro antiguo. Al lado, una pizarra o un diagrama técnico dibujado por el farero muestra las tres fases necesarias para activar el sistema de elevación: Calentar la caldera (fuego), lubricar los engranajes (aceite) y equilibrar la presión (válvulas).
+
+Además, notas que los objetos dentro del faro también están sutilmente "cambiados" (por ejemplo, los cuadros están torcidos o las manecillas del reloj de la pared giran al revés), recordando que la anomalía ya penetró al edificio.
+
+3. La solución
+El jugador debe completar una mini-secuencia de tres pasos lógicos en la planta baja:
+
+Buscar la lata de aceite (que estará en una esquina del almacén) y usarla en los engranajes trabados de la máquina.
+
+Encender la caldera usando unas cerillas de época que encuentra sobre la mesa de trabajo.
+
+Girar dos válvulas de la tubería en el orden correcto (según la lectura de un manómetro que indica la presión verde ideal) para liberar el vapor que acciona la polea.
+
+Al completar estos tres pasos, la trampilla superior de la escalera se abre con un fuerte golpe metálico, liberando el camino hacia la cima
+
+El Clímax y el Final Abierto
+El destello: El jugador acciona la última palanca en la cúspide. La enorme lente de Fresnel cobra vida, girando con un zumbido mecánico y emitiendo un haz de luz cegador y potente que corta la espesa niebla de la isla.
+
+La revelación en el exterior: Gracias a la intensa luz del faro, el haz barre los alrededores de la isla y los acantilados lejanos. Por un instante, la luz ilumina cosas que antes no se veían:
+
+Vemos que el mar alrededor no es solo agua, sino un abismo infinito.
+
+Y lo más importante: la luz revela tres caminos o senderos diferentes que antes estaban ocultos o bloqueados en la niebla (por ejemplo, un sendero antiguo que baja hacia una cueva secreta en la costa, un puente de piedra que se extiende hacia otra pequeña isleta lejana, y las huellas del farero antiguo que terminan abruptamente al borde de un embarcadero secundario).
+
+El misterio del farero: Cerca de la lámpara, la luz ilumina un último objeto que antes estaba en sombra: el diario personal abierto del farero anterior con su última página escrita a mano. Al leerla, descubres que él no huyó ni se ahogó; dejó escrito que "la luz no sirve para guiar a los barcos, sino para mantener a raya lo que habita en las mareas... y si el faro se apaga, ellos recuerdan el camino".
+
+El gancho (Fade to black): La cámara retrocede lentamente mientras el haz del faro gira, mostrando los tres nuevos caminos iluminados en la oscuridad. Aparece el título del juego: "El Misterio del Faro", y un subtítulo que dice: "El faro está encendido... pero ¿a dónde fue él?". Fin de la demo.
+
+OBJETOS:
+
+1. Objetos para el Puzle 1 (Zona del Muelle / Entrada)
+Estos son los elementos con los que interactúa el jugador apenas llega a la isla antes de que ocurra el cambio:
+
+El Candado Antiguo / Mecanismo de combinación: Un candado pesado de hierro o una rueda numérica incrustada en el marco de la puerta exterior o en una pequeña caja fuerte cerca del muelle.
+
+La Bitácora o Diario abierto: Un libro viejo con páginas de pergamino y una textura simulando texto escrito a mano (para la pista ambiental).
+
+El Mapa de la costa: Un plano enrollado o extendido sobre una mesa pequeña de madera junto al muelle.
+
+El Reloj de sol o Piedra de mareas: Una pequeña estela de piedra grabada con muescas numéricas situada en el exterior.
+
+2. Objetos para el Puzle 2 (Zona de la Isla Alterada - Para regresar al faro)
+Estos objetos aparecen o se activan en la isla cuando el camino original se bloquea tras el cambio:
+
+Los 3 Postes o Mojones de Navegación: Pilares de piedra cilíndricos o rectangulares con símbolos grabados en su superficie que el jugador debe poder girar o alinear.
+
+La roca o muro bloqueador: Un montículo de rocas afiladas o una formación de piedra imprevista que corta el sendero de tierra que sube hacia el faro (necesitarás el modelo de las rocas "normales" y su versión bloqueando el paso).
+
+La placa o roca con la inscripción: Una piedra plana en el suelo con el texto tallado: "Para enderezar el camino...".
+
+3. Objetos para el Puzle 3 (Interior del Faro - Planta Baja)
+Con base en tu plano de la planta baja (Entrada y pasillo, Cocina, Dormitorio, Habitación del generador), necesitarás modelar:
+
+El Generador / Caldera de vapor: Una máquina grande de hierro fundido con manómetros redondos y tuberías de cobre (ubicada en la habitación principal del generador).
+
+Las Válvulas de las tuberías: Dos o tres volantes de llave metálicos que se acoplan a los tubos de la caldera.
+
+La Lata de aceite clásica: Una aceitera de metal de forma cónica con un pico largo y delgado (se ubicará en una esquina del almacén/cocina).
+
+La Caja de cerillas de época: Una pequeña cajita sobre la mesa de trabajo o la cocina.
+
+Elementos de atrezzo alterados (para dar la atmósfera): Un cuadro colgado torcido en la pared, un reloj de pared cuyas manecillas apuntan al revés, o una taza de café derramada.
