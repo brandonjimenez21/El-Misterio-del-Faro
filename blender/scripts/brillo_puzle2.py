@@ -17,7 +17,9 @@ exec(compile(fuente, RUTA_EXP, "exec"))      # define S, VL, bk, only, new_img, 
 
 OBJETOS = ["Poste_1_Reflejo_Base", "Poste_1_Reflejo_Cabeza", "Poste_2_Origen_Base", "Poste_2_Origen_Cabeza",
            "Poste_3_Fin_Base", "Poste_3_Fin_Cabeza", "Placa_Inscripcion", "Roca_Bloqueo_Sendero", "Roca_Normal", "Estela_Mareas"]
-OBJETIVO = float(sys.argv[sys.argv.index("--objetivo") + 1]) if "--objetivo" in sys.argv else 0.30   # brillo medio (sRGB) deseado
+OBJETIVO = float(sys.argv[sys.argv.index("--objetivo") + 1]) if "--objetivo" in sys.argv else 0.26   # brillo medio (sRGB) deseado (por defecto)
+# las rocas de los puzles deben verse MAS OSCURAS que los postes (se veian muy claras de noche)
+OBJETIVO_POR_OBJETO = {"Roca_Bloqueo_Sendero": 0.19, "Roca_Normal": 0.19}
 # brillo medio (sRGB) de la textura de color ORIGINAL (medido antes de aplicar ninguna ganancia)
 MEDIA_ORIGINAL = {"Poste_1_Reflejo_Base": 0.203, "Poste_1_Reflejo_Cabeza": 0.239, "Poste_2_Origen_Base": 0.203,
                   "Poste_2_Origen_Cabeza": 0.258, "Poste_3_Fin_Base": 0.205, "Poste_3_Fin_Cabeza": 0.247,
@@ -68,7 +70,7 @@ for nombre in OBJETOS:
         print("BRILLO falta", nombre)
         continue
     mu = MEDIA_ORIGINAL[nombre]
-    g = min(max(1.0, (OBJETIVO / mu) ** 2.2), 8.0)
+    g = min(max(1.0, (OBJETIVO_POR_OBJETO.get(nombre, OBJETIVO) / mu) ** 2.2), 8.0)
     ganancia(o, g)
     hechos.append(o)
     print("BRILLO", nombre, "media", mu, "ganancia", round(g, 2))

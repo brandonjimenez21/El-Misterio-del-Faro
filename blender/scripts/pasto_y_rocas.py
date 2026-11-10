@@ -48,7 +48,7 @@ def mat(nombre, color, rough):
     return m
 
 M_PASTO = mat("M_Pasto", (0.08, 0.12, 0.03), 0.9)
-M_ROCA = mat("M_RocaIsla", (0.2, 0.19, 0.17), 0.95)
+M_ROCA = mat("M_RocaIsla", (0.5, 0.48, 0.44), 0.95)   # claro: las rocas sueltas salian casi negras de noche
 
 # ---------------------------------------------------------------- zonas a evitar
 camino = [(0.0, -34.6), (0.5, -21.6), (1.0, -6.0), (2.1, 9.6), (1.0, 25.2), (-1.0, 40.8), (-1.9, 51.8), (3.9, 62.2), (7.1, 73.3), (11.7, 83.7), (14.3, 92.8), (11.0, 98.6), (6.0, 99.7)]
