@@ -57,6 +57,6 @@ Material:
     - _FuerzaNormal: 1.6
     - _Modo: 1
     m_Colors:
-    - _Color: {r: 0.5, g: 0.48, b: 0.44, a: 1}
+    - _Color: {r: 0.44, g: 0.47, b: 0.52, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1

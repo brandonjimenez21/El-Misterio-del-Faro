@@ -48,7 +48,39 @@ def mat(nombre, color, rough):
     return m
 
 M_PASTO = mat("M_Pasto", (0.08, 0.12, 0.03), 0.9)
-M_ROCA = mat("M_RocaIsla", (0.5, 0.48, 0.44), 0.95)   # claro: las rocas sueltas salian casi negras de noche
+M_ROCA = mat("M_RocaIsla", (0.44, 0.47, 0.52), 0.95)   # claro: las rocas sueltas salian casi negras de noche
+# aspecto de roca en Blender (grietas + manchas + relieve). En Unity lo da el shader Faro/IslaDetalle; esto solo es para verlas bien aqui.
+def roca_procedural(m):
+    nt = m.node_tree
+    if False:
+        return
+    bsdf = nt.nodes.get("Principled BSDF")
+    tc = nt.nodes.new('ShaderNodeTexCoord')
+    ruido = nt.nodes.new('ShaderNodeTexNoise'); ruido.inputs["Scale"].default_value = 6.0; ruido.inputs["Detail"].default_value = 8.0
+    ruido.name = "RocaProc"
+    vor = nt.nodes.new('ShaderNodeTexVoronoi'); vor.feature = 'DISTANCE_TO_EDGE'; vor.inputs["Scale"].default_value = 3.0
+    rampa = nt.nodes.new('ShaderNodeValToRGB')
+    rampa.color_ramp.elements[0].position = 0.35; rampa.color_ramp.elements[0].color = (0.2, 0.21, 0.24, 1)
+    rampa.color_ramp.elements[1].position = 0.7; rampa.color_ramp.elements[1].color = (0.56, 0.59, 0.64, 1)
+    grieta = nt.nodes.new('ShaderNodeMath'); grieta.operation = 'MULTIPLY'; grieta.inputs[1].default_value = 3.0
+    mezcla = nt.nodes.new('ShaderNodeMix'); mezcla.data_type = 'RGBA'; mezcla.blend_type = 'MULTIPLY'; mezcla.inputs[0].default_value = 1.0
+    bump = nt.nodes.new('ShaderNodeBump'); bump.inputs["Strength"].default_value = 0.6
+    nt.links.new(tc.outputs["Object"], ruido.inputs["Vector"])
+    nt.links.new(tc.outputs["Object"], vor.inputs["Vector"])
+    nt.links.new(ruido.outputs["Fac"], rampa.inputs["Fac"])
+    nt.links.new(vor.outputs["Distance"], grieta.inputs[0])
+    nt.links.new(rampa.outputs["Color"], mezcla.inputs[6])
+    g2 = nt.nodes.new('ShaderNodeMath'); g2.operation = 'MINIMUM'; g2.inputs[1].default_value = 1.0
+    nt.links.new(grieta.outputs[0], g2.inputs[0])
+    gc = nt.nodes.new('ShaderNodeCombineColor')
+    for k in ("Red", "Green", "Blue"):
+        nt.links.new(g2.outputs[0], gc.inputs[k])
+    nt.links.new(gc.outputs["Color"], mezcla.inputs[7])
+    nt.links.new(mezcla.outputs[2], bsdf.inputs["Base Color"])
+    nt.links.new(ruido.outputs["Fac"], bump.inputs["Height"])
+    nt.links.new(bump.outputs["Normal"], bsdf.inputs["Normal"])
+    m.diffuse_color = (0.4, 0.42, 0.46, 1)
+roca_procedural(M_ROCA)
 
 # ---------------------------------------------------------------- zonas a evitar
 camino = [(0.0, -34.6), (0.5, -21.6), (1.0, -6.0), (2.1, 9.6), (1.0, 25.2), (-1.0, 40.8), (-1.9, 51.8), (3.9, 62.2), (7.1, 73.3), (11.7, 83.7), (14.3, 92.8), (11.0, 98.6), (6.0, 99.7)]
