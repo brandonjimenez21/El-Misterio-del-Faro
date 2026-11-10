@@ -3,7 +3,52 @@ guid: fbf8a76bb1dee42458f61b1743b09799
 ModelImporter:
   serializedVersion: 24300
   internalIDToNameTable: []
-  externalObjects: {}
+  externalObjects:
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: B_Placa_Inscripcion
+    second: {fileID: 2100000, guid: 7067001c91400c648aa6105bfd8b1030, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: B_Poste_1_Reflejo_Base
+    second: {fileID: 2100000, guid: 6676c09169335174f91a35ce6bdfe21f, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: B_Poste_1_Reflejo_Cabeza
+    second: {fileID: 2100000, guid: da917421d31dfa8499d1e1d8611ad77f, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: B_Poste_2_Origen_Base
+    second: {fileID: 2100000, guid: 8c43bc05c2902084a8719f0bfbf1821c, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: B_Poste_2_Origen_Cabeza
+    second: {fileID: 2100000, guid: 6069d20716770124ab67bc7a4dfd4bd5, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: B_Poste_3_Fin_Base
+    second: {fileID: 2100000, guid: 67f3310b495b5964ebccd2fa736c8082, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: B_Poste_3_Fin_Cabeza
+    second: {fileID: 2100000, guid: 07e860cb00747e5458e53520942b5ec7, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: B_Roca_Bloqueo_Sendero
+    second: {fileID: 2100000, guid: 410eafd9310481e4fa578b991fbc0c3b, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: B_Roca_Normal
+    second: {fileID: 2100000, guid: 90398dcb5bb52a64786b671b4568c62d, type: 2}
   materials:
     materialImportMode: 2
     materialName: 0

@@ -10,7 +10,7 @@ NIVEL_MAR = -0.55            # altura del agua (m)
 TAM = 160.0                  # tamano de un mosaico de oceano (m)
 REPETIR = 2                  # mosaicos por lado -> ~320 m de oceano
 CENTRO = (0.0, 45.0)         # centro del oceano (m): entre el muelle y la isla
-NEBLINA = 0.009              # densidad de la neblina (mas alto = horizonte mas cerrado)
+NEBLINA = 0.012              # densidad de la neblina (mas alto = horizonte mas cerrado); Unity usa el mismo valor
 BRILLO_NEBLINA = 0.0008      # resplandor de la neblina (mas alto = noche mas clara)
 COLOR_NEBLINA = (0.045, 0.06, 0.085)
 SCRATCH = sys.argv[-1] if sys.argv[-1].endswith("scratchpad") else None
