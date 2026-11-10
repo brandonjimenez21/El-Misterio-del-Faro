@@ -16,6 +16,8 @@ public class Relampagos : MonoBehaviour
     public float ambienteExtra = 2.5f;
     [Header("Trueno (opcional)")]
     public AudioSource trueno;
+    [Tooltip("Varios sonidos de trueno: se elige uno al azar en cada relampago")] public AudioClip[] truenos;
+    [Tooltip("Volumen de un trueno cercano (0.4 km) y de uno lejano (3 km)")] public Vector2 volumen = new Vector2(1f, 0.35f);
     public Vector2 distanciaKm = new Vector2(0.4f, 3f);
 
     float ambienteBase;
@@ -44,7 +46,13 @@ public class Relampagos : MonoBehaviour
         if (luzDestello == null) yield break;
         luzDestello.transform.rotation = Quaternion.Euler(Random.Range(15f, 55f), Random.Range(0f, 360f), 0f);
         float km = Random.Range(distanciaKm.x, distanciaKm.y);
-        if (trueno != null) trueno.PlayDelayed(km * 1000f / 343f);
+        if (trueno != null)
+        {
+            if (truenos != null && truenos.Length > 0) trueno.clip = truenos[Random.Range(0, truenos.Length)];
+            trueno.volume = Mathf.Lerp(volumen.x, volumen.y, Mathf.InverseLerp(distanciaKm.x, distanciaKm.y, km));
+            trueno.pitch = Random.Range(0.92f, 1.05f);
+            trueno.PlayDelayed(km * 1000f / 343f);
+        }
         // pulsos: (duracion, fuerza)
         float[,] pulsos = { { 0.07f, 1f }, { 0.06f, 0.15f }, { 0.10f, 0.8f }, { 0.05f, 0.1f }, { 0.22f, 0.45f } };
         for (int i = 0; i < pulsos.GetLength(0); i++)

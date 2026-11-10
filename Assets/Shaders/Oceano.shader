@@ -46,6 +46,7 @@ Shader "Faro/Oceano"
                 float3 positionWS : TEXCOORD0;
                 float3 normalWS : TEXCOORD1;
                 float h : TEXCOORD2;
+                float jac : TEXCOORD5;
                 half fogFactor : TEXCOORD3;
                 float4 screenPos : TEXCOORD4;
             };
@@ -79,8 +80,11 @@ Shader "Faro/Oceano"
                 Ola(float2(0.8, -0.6), 21.0, 0.18, 1.0, p, t, disp, tang, bin);
                 Ola(float2(-0.3, 1.0), 15.0, 0.09, 1.0, p, t, disp, tang, bin);
                 Ola(float2(0.9, 0.9), 9.5, 0.04, 1.0, p, t, disp, tang, bin);   // >5 muestras por onda en la malla (1.6 m) para evitar aliasing
+                Ola(float2(0.6, -0.8), 12.5, 0.07, 1.0, p, t, disp, tang, bin);   // oleaje de viento (tormenta)
+                Ola(float2(1.0, -0.2), 8.5, 0.035, 1.0, p, t, disp, tang, bin);
                 wp += disp;
                 OUT.h = disp.y;
+                OUT.jac = tang.x * bin.z - tang.z * bin.x;      // < 1 donde las olas se "amontonan": ahi rompe la espuma
                 OUT.positionWS = wp;
                 OUT.normalWS = normalize(cross(bin, tang));
                 OUT.positionCS = TransformWorldToHClip(wp);
@@ -113,9 +117,11 @@ Shader "Faro/Oceano"
 
                 // espuma suave en las crestas altas
                 float espuma = smoothstep(0.50, 0.95, alto) * saturate(_Fuerza - 0.1);
+                float rompe = (1.0 - smoothstep(0.18, 0.62, IN.jac)) * saturate(_Fuerza - 0.2);      // crestas que rompen
+                espuma = saturate(max(espuma, rompe * 1.2));
                 float ruido = 0.5 + 0.5 * sin(p.x * 0.9 + p.y * 1.3 + t * 0.6) * sin(p.y * 1.1 - p.x * 0.7 - t * 0.4);
                 ruido = saturate(ruido + 0.25 * sin(p.x * 3.1 + t * 1.9) * sin(p.y * 2.7 - t * 1.4));
-                col = lerp(col, _ColorEspuma.rgb, espuma * ruido * 0.85);
+                col = lerp(col, _ColorEspuma.rgb, espuma * smoothstep(0.15, 0.75, ruido) * 0.9);
 
                 // espuma de orilla: donde el agua esta cerca de algo opaco (costa, rocas, pilotes) segun la profundidad
                 float2 suv = IN.screenPos.xy / IN.screenPos.w;
