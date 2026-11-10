@@ -14,10 +14,14 @@ Shader "Faro/Oceano"
         _Brillo ("Brillo de la luna (exponente)", Range(8, 600)) = 220
         _BrilloInt ("Intensidad del brillo", Range(0, 20)) = 5
         _Detalle ("Ondas finas", Range(0, 0.3)) = 0.07
+        _Orilla ("Ancho de la espuma de orilla (m)", Range(0, 4)) = 1.6
+        _OrillaInt ("Intensidad de la espuma de orilla", Range(0, 1.5)) = 0.9
     }
     SubShader
     {
-        Tags { "RenderType"="Opaque" "RenderPipeline"="UniversalPipeline" "Queue"="Geometry" }
+        // Cola transparente (pero sin mezcla) para leer la profundidad de lo opaco y pintar espuma donde el agua toca algo
+        Tags { "RenderType"="Transparent" "RenderPipeline"="UniversalPipeline" "Queue"="Transparent-10" }
+        ZWrite On
         Pass
         {
             Name "ForwardLit"
@@ -28,10 +32,11 @@ Shader "Faro/Oceano"
             #pragma multi_compile_fog
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DeclareDepthTexture.hlsl"
 
             CBUFFER_START(UnityPerMaterial)
                 half4 _ColorProfundo, _ColorCresta, _ColorCielo, _ColorEspuma;
-                float _Amp, _Fuerza, _Velocidad, _Brillo, _BrilloInt, _Detalle;
+                float _Amp, _Fuerza, _Velocidad, _Brillo, _BrilloInt, _Detalle, _Orilla, _OrillaInt;
             CBUFFER_END
 
             struct Attributes { float4 positionOS : POSITION; };
@@ -42,6 +47,7 @@ Shader "Faro/Oceano"
                 float3 normalWS : TEXCOORD1;
                 float h : TEXCOORD2;
                 half fogFactor : TEXCOORD3;
+                float4 screenPos : TEXCOORD4;
             };
 
             // una ola de Gerstner: acumula desplazamiento, tangente y binormal
@@ -78,6 +84,7 @@ Shader "Faro/Oceano"
                 OUT.positionWS = wp;
                 OUT.normalWS = normalize(cross(bin, tang));
                 OUT.positionCS = TransformWorldToHClip(wp);
+                OUT.screenPos = ComputeScreenPos(OUT.positionCS);
                 OUT.fogFactor = ComputeFogFactor(OUT.positionCS.z);
                 return OUT;
             }
@@ -109,6 +116,16 @@ Shader "Faro/Oceano"
                 float ruido = 0.5 + 0.5 * sin(p.x * 0.9 + p.y * 1.3 + t * 0.6) * sin(p.y * 1.1 - p.x * 0.7 - t * 0.4);
                 ruido = saturate(ruido + 0.25 * sin(p.x * 3.1 + t * 1.9) * sin(p.y * 2.7 - t * 1.4));
                 col = lerp(col, _ColorEspuma.rgb, espuma * ruido * 0.85);
+
+                // espuma de orilla: donde el agua esta cerca de algo opaco (costa, rocas, pilotes) segun la profundidad
+                float2 suv = IN.screenPos.xy / IN.screenPos.w;
+                float escena = LinearEyeDepth(SampleSceneDepth(suv), _ZBufferParams);
+                float dif = max(escena - IN.screenPos.w, 0.0);
+                float cerca = 1.0 - smoothstep(0.0, max(_Orilla, 0.01), dif);
+                float ondas = 0.55 + 0.45 * sin(dif * 7.0 - t * 2.2 + p.x * 0.35 + p.y * 0.3);   // franjas que avanzan hacia la orilla
+                float rugoso = saturate(0.5 + 0.5 * sin(p.x * 2.3 + t * 1.1) * sin(p.y * 2.9 - t * 0.9) + 0.25);
+                float orilla = cerca * ondas * rugoso * _OrillaInt;
+                col = lerp(col, _ColorEspuma.rgb * 1.5, saturate(orilla));
 
                 col = MixFog(col, IN.fogFactor);
                 return half4(col, 1);

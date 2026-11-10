@@ -30,6 +30,8 @@ Material:
     - _BrilloInt: 3
     - _Detalle: 0.035
     - _Fuerza: 0.9152697
+    - _Orilla: 1.6
+    - _OrillaInt: 0.9
     - _Velocidad: 1
     m_Colors:
     - _ColorCielo: {r: 0.18, g: 0.24, b: 0.33, a: 1}
