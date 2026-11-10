@@ -8,7 +8,7 @@ Shader "Faro/Oceano"
         _ColorCresta ("Color cresta", Color) = (0.03, 0.09, 0.105, 1)
         _ColorCielo ("Color reflejado del cielo", Color) = (0.10, 0.14, 0.20, 1)
         _ColorEspuma ("Color espuma", Color) = (0.2, 0.26, 0.3, 1)
-        _Amp ("Tamano de las olas", Range(0, 3)) = 1
+        _Amp ("Tamano de las olas", Range(0, 4)) = 1
         _Fuerza ("Fuerza (picos) de las olas", Range(0, 2)) = 1
         _Velocidad ("Velocidad", Range(0, 3)) = 1
         _Brillo ("Brillo de la luna (exponente)", Range(8, 600)) = 220
@@ -68,10 +68,11 @@ Shader "Faro/Oceano"
                 float2 p = wp.xz;
                 float t = _Time.y * _Velocidad;
                 float3 disp = 0, tang = float3(1, 0, 0), bin = float3(0, 0, 1);
+                Ola(float2(1.0, 0.12), 70.0, 0.30, 1.0, p, t, disp, tang, bin);   // mar de fondo (olas largas y altas)
                 Ola(float2(1.0, 0.35), 38.0, 0.30, 1.0, p, t, disp, tang, bin);
                 Ola(float2(0.8, -0.6), 21.0, 0.18, 1.0, p, t, disp, tang, bin);
-                Ola(float2(-0.3, 1.0), 11.0, 0.09, 1.0, p, t, disp, tang, bin);
-                Ola(float2(0.9, 0.9), 5.5, 0.04, 1.0, p, t, disp, tang, bin);
+                Ola(float2(-0.3, 1.0), 15.0, 0.09, 1.0, p, t, disp, tang, bin);
+                Ola(float2(0.9, 0.9), 9.5, 0.04, 1.0, p, t, disp, tang, bin);   // >5 muestras por onda en la malla (1.6 m) para evitar aliasing
                 wp += disp;
                 OUT.h = disp.y;
                 OUT.positionWS = wp;
@@ -104,9 +105,10 @@ Shader "Faro/Oceano"
                 col += L.color * spec * _BrilloInt * (0.25 + fres);
 
                 // espuma suave en las crestas altas
-                float espuma = smoothstep(0.55, 1.0, alto) * saturate(_Fuerza - 0.2);
+                float espuma = smoothstep(0.50, 0.95, alto) * saturate(_Fuerza - 0.1);
                 float ruido = 0.5 + 0.5 * sin(p.x * 0.9 + p.y * 1.3 + t * 0.6) * sin(p.y * 1.1 - p.x * 0.7 - t * 0.4);
-                col = lerp(col, _ColorEspuma.rgb, espuma * ruido * 0.6);
+                ruido = saturate(ruido + 0.25 * sin(p.x * 3.1 + t * 1.9) * sin(p.y * 2.7 - t * 1.4));
+                col = lerp(col, _ColorEspuma.rgb, espuma * ruido * 0.85);
 
                 col = MixFog(col, IN.fogFactor);
                 return half4(col, 1);

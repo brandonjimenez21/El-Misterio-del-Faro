@@ -25,16 +25,16 @@ Material:
     m_TexEnvs: []
     m_Ints: []
     m_Floats:
-    - _Amp: 0.36661887
+    - _Amp: 1.0969871
     - _Brillo: 450
-    - _BrilloInt: 1.6
+    - _BrilloInt: 3
     - _Detalle: 0.035
-    - _Fuerza: 0.6265002
+    - _Fuerza: 0.85034835
     - _Velocidad: 1
     m_Colors:
-    - _ColorCielo: {r: 0.09, g: 0.115, b: 0.16, a: 1}
-    - _ColorCresta: {r: 0.03, g: 0.089999996, b: 0.10499997, a: 1}
-    - _ColorEspuma: {r: 0.19999996, g: 0.25999996, b: 0.29999998, a: 1}
-    - _ColorProfundo: {r: 0.004, g: 0.02, b: 0.032, a: 1}
+    - _ColorCielo: {r: 0.18, g: 0.24, b: 0.33, a: 1}
+    - _ColorCresta: {r: 0.08, g: 0.17, b: 0.21, a: 1}
+    - _ColorEspuma: {r: 0.38, g: 0.46, b: 0.52, a: 1}
+    - _ColorProfundo: {r: 0.02, g: 0.05, b: 0.08, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1
