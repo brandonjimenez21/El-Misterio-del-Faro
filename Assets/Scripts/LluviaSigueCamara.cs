@@ -27,6 +27,8 @@ public class LluviaSigueCamara : MonoBehaviour
 
     /// <summary>Cuanta lluvia le llega a la camara ahora (0 dentro de la cabana o la torre).</summary>
     public float LluviaEnCamara => intensidad * factorInterior;
+    /// <summary>1 = la camara esta fuera, 0 = dentro de la cabana o la torre (cambia suave). Lo usa el sonido.</summary>
+    public float FactorExterior => factorInterior;
 
     void LateUpdate()
     {

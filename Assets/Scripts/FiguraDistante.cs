@@ -28,6 +28,9 @@ public class FiguraDistante : MonoBehaviour
     [Tooltip("Si el jugador se acerca mas que esto, desaparece (m)")] public float distanciaHuida = 12f;
     public float segundosMirada = 1.6f;
 
+    /// <summary>Se lanza cuando la figura aparece: (posicion, cercania 0 = lejos .. 1 = lo mas cerca). Lo usa el sonido.</summary>
+    public static event System.Action<Vector3, float> AlAparecer;
+
     int apariciones;
     bool visible;
     float mirando;
@@ -73,6 +76,7 @@ public class FiguraDistante : MonoBehaviour
         if (hacia.sqrMagnitude > 0.01f) figura.transform.rotation = Quaternion.LookRotation(hacia) * Quaternion.Euler(0f, 180f + Random.Range(-14f, 14f), 0f);
         figura.SetActive(true);
         visible = true; mirando = 0f; apariciones++;
+        if (AlAparecer != null) AlAparecer(mejor.position, t);
         if (ReaccionViento.Instancia != null) ReaccionViento.Instancia.Calmar(silencioViento);
         StartCoroutine(OcultarTrasDestello());
         return true;

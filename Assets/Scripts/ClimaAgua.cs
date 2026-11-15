@@ -51,6 +51,10 @@ public class ClimaAgua : MonoBehaviour
     bool iniciado, mojadoEsDeEstaOla;
 
     static ClimaAgua instancia;
+    Vector3 puntoObjetivo;
+
+    /// <summary>Se lanza cuando una ola grande llega a la orilla: (punto de la costa, fuerza 0..1). Lo usa el sonido.</summary>
+    public static event System.Action<Vector3, float> AlRomperOla;
 
     static readonly int idLluvia = Shader.PropertyToID("_FaroLluvia");
     static readonly int idCharcos = Shader.PropertyToID("_FaroCharcos");
@@ -119,6 +123,7 @@ public class ClimaAgua : MonoBehaviour
                 if (!mojadoEsDeEstaOla)
                 {
                     mojadoEsDeEstaOla = true;
+                    if (AlRomperOla != null) AlRomperOla(puntoObjetivo, Mathf.InverseLerp(altura.x * 0.5f, altura.y, fuerzaPico));
                     dirMojado = dir; xMojado = xObjetivo; latMojado = latCentro; altoMojado = 0f; frenteMojado = float.MinValue;
                 }
                 altoMojado = Mathf.Max(altoMojado, fuerzaAhora);
@@ -150,6 +155,7 @@ public class ClimaAgua : MonoBehaviour
                 if (d < mejor) { mejor = d; objetivo = p; }
             }
         }
+        puntoObjetivo = objetivo;
         Vector2 obj = new Vector2(objetivo.x, objetivo.z);
         Vector2 hacia = (centroIsla - obj).normalized;                       // del mar hacia la isla
         float giro = Random.Range(-28f, 28f) * Mathf.Deg2Rad;
