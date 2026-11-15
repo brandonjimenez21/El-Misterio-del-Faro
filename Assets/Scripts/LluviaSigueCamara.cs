@@ -25,6 +25,9 @@ public class LluviaSigueCamara : MonoBehaviour
     float factorInterior = 1f;   // 1 = fuera, 0 = dentro
     Transform cam;
 
+    /// <summary>Cuanta lluvia le llega a la camara ahora (0 dentro de la cabana o la torre).</summary>
+    public float LluviaEnCamara => intensidad * factorInterior;
+
     void LateUpdate()
     {
         if (cam == null) { if (Camera.main != null) cam = Camera.main.transform; else return; }

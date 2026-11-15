@@ -4,8 +4,10 @@
 #   Roca_i_j    : cantos y bloques de baja resolucion (alrededor de los "dedos" de roca, la costa y los postes),
 #                 tambien en bloques.
 # Uso: blender -b archivo.blend --python pasto_y_rocas.py -- [--save]
-import bpy, bmesh, math, random, sys
-from mathutils import Vector, Matrix
+import bpy, bmesh, math, random, sys, os
+from mathutils import Vector, Matrix, noise
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import ramas_lib
 
 S = bpy.context.scene
 I = bpy.data.objects["IslandModel"]
@@ -16,9 +18,11 @@ R = random.Random(21)
 PI = math.pi
 NIVEL_MAR = -0.55
 CELDA = 24.0
-N_PASTO = 11000
+N_PASTO = 15000
 N_ROCAS_BASE = 190
 N_ROCAS_COSTA = 90
+N_GUIJARROS = 520       # grupos de piedrecitas sueltas
+N_RAMAS = 150           # ramas caidas
 
 
 def suelo(x, y):
@@ -109,24 +113,31 @@ def libre(x, y, margen=0.0):
 
 # ---------------------------------------------------------------- PASTO
 def mechon(bm, c, n, tinte, esc):
-    hojas = R.randint(6, 8)
+    """mechon de 9-14 hojas curvadas (3 triangulos cada una: base ancha, mitad y punta). UV = (tinte, altura 0..1)."""
+    hojas = R.randint(9, 14)
+    uvl = bm.loops.layers.uv.verify()
     for k in range(hojas):
-        ang = 2 * PI * k / hojas + R.uniform(-0.4, 0.4)
+        ang = 2 * PI * k / hojas + R.uniform(-0.5, 0.5)
         d = Vector((math.cos(ang), math.sin(ang), 0))
         t = Vector((-d.y, d.x, 0))
-        alto = R.uniform(0.32, 0.62) * esc
-        ancho = R.uniform(0.06, 0.095) * esc
-        inc = R.uniform(0.25, 0.7)
-        r0 = R.uniform(0.0, 0.07) * esc
+        alto = R.uniform(0.25, 0.72) * esc * (1.35 if R.random() < 0.08 else 1.0)   # alguna hoja alta suelta
+        ancho = R.uniform(0.04, 0.08) * esc
+        inc = R.uniform(0.12, 0.8)                                                  # cuanto se inclina hacia fuera
+        r0 = R.uniform(0.0, 0.10) * esc
         b0 = c + d * r0
-        tip = b0 + d * (alto * inc) + Vector((0, 0, alto * (1 - 0.35 * inc)))
+        lado = t * R.uniform(-0.12, 0.12) * alto                                   # leve torcedura lateral
+        mid = b0 + d * (alto * inc * 0.3) + lado * 0.5 + Vector((0, 0, alto * 0.52))
+        tip = b0 + d * (alto * inc) + lado + Vector((0, 0, alto * (1 - 0.42 * inc)))
         v0 = bm.verts.new(b0 - t * ancho)
         v1 = bm.verts.new(b0 + t * ancho)
+        m0 = bm.verts.new(mid - t * ancho * 0.62)
+        m1 = bm.verts.new(mid + t * ancho * 0.62)
         v2 = bm.verts.new(tip)
-        f = bm.faces.new((v0, v1, v2))
-        uvl = bm.loops.layers.uv.verify()
-        for lp, hh in zip(f.loops, (0.0, 0.0, 1.0)):
-            lp[uvl].uv = (tinte, hh)
+        u = tinte + R.uniform(-0.03, 0.03)
+        for tri, hs in (((v0, v1, m1), (0.0, 0.0, 0.5)), ((v0, m1, m0), (0.0, 0.5, 0.5)), ((m0, m1, v2), (0.5, 0.5, 1.0))):
+            f = bm.faces.new(tri)
+            for lp, hh in zip(f.loops, hs):
+                lp[uvl].uv = (u, hh)
 
 celdas = {}
 puestos = 0
@@ -159,26 +170,40 @@ print("VEG pasto mechones", puestos, "bloques", len(celdas), "tris", tris)
 
 
 # ---------------------------------------------------------------- ROCAS SUELTAS
-def canto(bm, c, tam, achatado):
-    r = bmesh.ops.create_icosphere(bm, subdivisions=1, radius=1.0)
+def canto(bm, c, tam, achatado, sub=2):
+    """roca esculpida: icosfera + ruido de dos frecuencias (forma irregular) + planos de corte (caras planas y aristas),
+    sombreado suave; la textura la pone el shader en el mundo (triplanar), asi que no necesita UV."""
+    r = bmesh.ops.create_icosphere(bm, subdivisions=sub, radius=1.0)
     vs = r["verts"]
-    ejes = Vector((R.uniform(0.8, 1.4), R.uniform(0.8, 1.4), achatado))
+    ejes = Vector((R.uniform(0.8, 1.5), R.uniform(0.8, 1.5), achatado))
     rot = Matrix.Rotation(R.uniform(0, 2 * PI), 3, 'Z')
+    sem = Vector((R.uniform(0, 200), R.uniform(0, 200), R.uniform(0, 200)))
+    cortes = []
+    for _ in range(R.randint(3, 6) if sub >= 2 else 2):
+        nrm = Vector((R.uniform(-1, 1), R.uniform(-1, 1), R.uniform(-0.25, 1))).normalized()
+        cortes.append((nrm, R.uniform(0.6, 0.86)))
     for v in vs:
-        k = 1.0 + R.uniform(-0.28, 0.28)                       # facetas irregulares
-        v.co = rot @ Vector((v.co.x * ejes.x * k, v.co.y * ejes.y * k, v.co.z * ejes.z * k)) * tam + c
+        p = v.co.copy()
+        p = p * (1.0 + 0.24 * noise.noise(p * 1.5 + sem) + 0.08 * noise.noise(p * 4.2 + sem * 1.7)
+                 + (0.025 * noise.noise(p * 11.0 + sem * 2.3) if sub >= 2 else 0.0))
+        for nrm, h in cortes:
+            dd = p.dot(nrm)
+            if dd > h:
+                p -= nrm * (dd - h) * 0.92                       # aplana la punta: cara plana con arista
+        p = Vector((p.x * ejes.x, p.y * ejes.y, p.z * ejes.z))
+        v.co = rot @ p * tam + c
     for v in vs:
         v.co.z = max(v.co.z, c.z - tam * 0.25)                  # base hundida en el suelo
 
 
 rocas = {}
 n_r = 0
-def poner_roca(x, y, g, tam, achat):
+def poner_roca(x, y, g, tam, achat, sub=2):
     global n_r
     key = (int(math.floor(x / CELDA)), int(math.floor(y / CELDA)))
     if key not in rocas:
         rocas[key] = bmesh.new()
-    canto(rocas[key], Vector((x, y, g)), tam, achat)
+    canto(rocas[key], Vector((x, y, g)), tam, achat, sub)
     n_r += 1
 
 # 1) al pie de los "dedos" y las laderas: puntos donde el terreno se endereza tras una pendiente
@@ -205,10 +230,28 @@ while tot < N_ROCAS_COSTA and intentos < 40000:
         continue                                              # no tapar el muelle
     poner_roca(x, y, g, R.choice((0.4, 0.6, 0.9, 1.4, 2.0)) * R.uniform(0.8, 1.2), R.uniform(0.45, 0.8))
     tot += 1
+
+# 3) guijarros: grupos de piedrecitas sueltas por el suelo (rompen la "alfombra" lisa de tierra y pasto)
+tot, intentos = 0, 0
+while tot < N_GUIJARROS and intentos < 60000:
+    intentos += 1
+    x, y = R.uniform(-64, 60), R.uniform(-34, 120)
+    g, n = suelo(x, y)
+    if g is None or g < 0.6 or n.z < 0.75:
+        continue
+    if (y < -10 and abs(x) < 8) or not libre(x, y, 0.5):
+        continue
+    for _ in range(R.randint(3, 7)):
+        px, py = x + R.gauss(0, 0.45), y + R.gauss(0, 0.45)
+        g2, n2 = suelo(px, py)
+        if g2 is None or n2.z < 0.7:
+            continue
+        poner_roca(px, py, g2, R.uniform(0.05, 0.2), R.uniform(0.45, 0.8), sub=1)
+    tot += 1
 rt = 0
 for (i, j), bm in rocas.items():
     for f in bm.faces:
-        f.smooth = False
+        f.smooth = True
     me = bpy.data.meshes.new("Roca_%d_%d" % (i, j))
     bm.to_mesh(me)
     rt += len(me.polygons)
@@ -217,5 +260,60 @@ for (i, j), bm in rocas.items():
     ob = bpy.data.objects.new("Roca_%d_%d" % (i, j), me)
     col.objects.link(ob)
 print("VEG rocas", n_r, "bloques", len(rocas), "tris", rt)
+
+
+# ---------------------------------------------------------------- RAMAS CAIDAS (material de corteza del atrezzo; UV en tiles para el detalle de corteza)
+M_COR = bpy.data.materials.get("M_Atrezzo_Corteza") or mat("M_Atrezzo_Corteza", (0.1, 0.085, 0.07), 1.0)
+ramas = {}
+n_ram = 0
+intentos = 0
+while n_ram < N_RAMAS and intentos < 40000:
+    intentos += 1
+    x, y = R.uniform(-60, 56), R.uniform(-30, 116)
+    g, n = suelo(x, y)
+    if g is None or g < 2.2 or n.z < 0.82:
+        continue
+    if dist_camino(x, y) < 2.4 or not libre(x, y, 0.5):
+        continue
+    key = (int(math.floor(x / CELDA)), int(math.floor(y / CELDA)))
+    if key not in ramas:
+        ramas[key] = bmesh.new()
+    bm = ramas[key]
+    largo = R.uniform(0.5, 1.9)
+    r0 = R.uniform(0.012, 0.032)
+    ang = R.uniform(0, 2 * PI)
+    d = Vector((math.cos(ang), math.sin(ang), 0))
+    pts, rad = [], []
+    pasos = 5
+    tuerce = R.uniform(-0.35, 0.35)
+    for k in range(pasos + 1):
+        t = k / pasos
+        dd = (d + Vector((-d.y, d.x, 0)) * tuerce * t).normalized()
+        px, py = x + dd.x * largo * t, y + dd.y * largo * t
+        gz = suelo(px, py)[0]
+        gz = g if gz is None else gz
+        pts.append(Vector((px, py, gz + r0 * 0.7 + R.uniform(0.0, 0.03) + (0.05 * math.sin(t * PI) if R.random() < 0.5 else 0))))
+        rad.append(r0 * (1.0 - 0.7 * t))
+    ramas_lib.tubo_curvo(bm, pts, rad, seg=5, tapa_base=True, v0=R.uniform(0, 4))
+    for _ in range(R.randint(1, 3)):                              # ramitas laterales
+        k = R.randint(1, pasos - 2)
+        d2 = (pts[k + 1] - pts[k]).normalized()
+        d2 = (d2 + Vector((R.uniform(-0.8, 0.8), R.uniform(-0.8, 0.8), R.uniform(0.0, 0.5)))).normalized()
+        l2 = largo * R.uniform(0.2, 0.4)
+        q = [pts[k] + d2 * l2 * s for s in (0.0, 0.5, 1.0)]
+        for qq in q:
+            qq.z = max(qq.z, pts[k].z - 0.01)
+        ramas_lib.tubo_curvo(bm, q, [rad[k] * 0.6, rad[k] * 0.42, rad[k] * 0.2], seg=4, tapa_base=False, v0=R.uniform(0, 4))
+    n_ram += 1
+tr = 0
+for (i, j), bm in ramas.items():
+    me = bpy.data.meshes.new("Rama_%d_%d" % (i, j))
+    bm.to_mesh(me)
+    tr += len(me.polygons)
+    bm.free()
+    me.materials.append(M_COR)
+    ob = bpy.data.objects.new("Rama_%d_%d" % (i, j), me)
+    col.objects.link(ob)
+print("VEG ramas", n_ram, "bloques", len(ramas), "tris", tr)
 if "--save" in sys.argv:
     bpy.ops.wm.save_mainfile()

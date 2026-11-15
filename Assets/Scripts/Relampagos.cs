@@ -20,6 +20,13 @@ public class Relampagos : MonoBehaviour
     [Tooltip("Volumen de un trueno cercano (0.4 km) y de uno lejano (3 km)")] public Vector2 volumen = new Vector2(1f, 0.35f);
     public Vector2 distanciaKm = new Vector2(0.4f, 3f);
 
+    /// <summary>Se lanza al empezar cada relampago (fuerza 0..1 del primer pulso). Otros scripts lo usan para reaccionar.</summary>
+    public static event System.Action AlRelampago;
+    /// <summary>Intensidad actual del destello (0 = no hay relampago)</summary>
+    public static float Brillo { get; private set; }
+    /// <summary>Hay un destello en este momento</summary>
+    public static bool EnDestello { get { return Brillo > 0.05f; } }
+
     float ambienteBase;
 
     void Start()
@@ -53,6 +60,7 @@ public class Relampagos : MonoBehaviour
             trueno.pitch = Random.Range(0.92f, 1.05f);
             trueno.PlayDelayed(km * 1000f / 343f);
         }
+        if (AlRelampago != null) AlRelampago();
         // pulsos: (duracion, fuerza)
         float[,] pulsos = { { 0.07f, 1f }, { 0.06f, 0.15f }, { 0.10f, 0.8f }, { 0.05f, 0.1f }, { 0.22f, 0.45f } };
         for (int i = 0; i < pulsos.GetLength(0); i++)
@@ -65,11 +73,18 @@ public class Relampagos : MonoBehaviour
         Aplicar(0f);
     }
 
+    static readonly int idRelampago = Shader.PropertyToID("_FaroRelampago");
+    static readonly int idRelampagoDir = Shader.PropertyToID("_FaroRelampagoDir");
+
     void Aplicar(float f)
     {
+        Brillo = f;
+        // para el cielo (nubes iluminadas desde dentro, del lado del rayo) y los charcos
+        Shader.SetGlobalFloat(idRelampago, f);
+        if (luzDestello != null) Shader.SetGlobalVector(idRelampagoDir, -luzDestello.transform.forward);
         luzDestello.intensity = intensidadPico * f;
         RenderSettings.ambientIntensity = ambienteBase + ambienteExtra * f;
     }
 
-    void OnDisable() { RenderSettings.ambientIntensity = ambienteBase > 0f ? ambienteBase : 1f; }
+    void OnDisable() { RenderSettings.ambientIntensity = ambienteBase > 0f ? ambienteBase : 1f; Shader.SetGlobalFloat(idRelampago, 0f); }
 }

@@ -27,11 +27,14 @@ Material:
     m_Floats:
     - _DistFin: 54
     - _DistIni: 38
+    - _ParchesSecos: 0.6
+    - _Translucidez: 0.85
     - _Variacion: 0.5
-    - _VelViento: 1.6
-    - _Viento: 0.14
+    - _VelViento: 1.8
+    - _Viento: 0.3
     m_Colors:
-    - _ColorBase: {r: 0.015, g: 0.03, b: 0.008, a: 1}
-    - _ColorPunta: {r: 0.11999995, g: 0.16999996, b: 0.044999972, a: 1}
+    - _ColorBase: {r: 0.03, g: 0.05, b: 0.015, a: 1}
+    - _ColorPunta: {r: 0.2, g: 0.27, b: 0.08, a: 1}
+    - _ColorSeco: {r: 1.5, g: 1.15, b: 0.54999995, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1

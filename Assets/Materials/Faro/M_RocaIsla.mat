@@ -49,13 +49,19 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
+    - _AltoMojado: 1.1
     - _DistDetalle: 90
+    - _DistFino: 28
     - _EscalaPasto: 0.9
+    - _EscalaPasto3: 4.2
     - _EscalaRoca: 0.3
     - _EscalaRoca2: 1.4
+    - _EscalaRoca3: 6.5
     - _FuerzaColor: 0.9
     - _FuerzaNormal: 1.6
     - _Modo: 1
+    - _NivelMar: -0.7
+    - _VariacionMacro: 0.5
     m_Colors:
     - _Color: {r: 0.44, g: 0.47, b: 0.52, a: 1}
   m_BuildTextureStacks: []
