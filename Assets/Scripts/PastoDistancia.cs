@@ -25,7 +25,8 @@ public class PastoDistancia : MonoBehaviour
         proximo = Time.time + intervalo;
         var cam = Camera.main; if (cam == null) return;
         Vector3 p = cam.transform.position;
-        float d2 = distanciaMax * distanciaMax;
+        float dm = distanciaMax * (1f - CalidadAutomatica.RecorteHierba);     // en equipos lentos la hierba llega menos lejos
+        float d2 = dm * dm;
         foreach (var r in bloques)
         {
             if (r == null) continue;

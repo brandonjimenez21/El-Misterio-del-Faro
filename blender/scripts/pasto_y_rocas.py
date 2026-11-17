@@ -1,13 +1,18 @@
 # Pasto y rocas sueltas de la isla (ligeros). Coleccion "Vegetacion_Isla":
-#   Pasto_i_j   : mechones de hierba (1 triangulo por hoja, 7 hojas por mechon) agrupados en bloques de 24 m
-#                 para que Unity los descarte por distancia/vista. UV0 = (tinte aleatorio, altura 0..1) para el viento y el color.
+#   Pasto_i_j   : matas de hierba = 3 tarjetas cruzadas con la textura T_Pasto_Matas.png (atlas 2x2, recorte por alfa; la genera
+#                 textura_pasto.py), agrupadas en bloques de 24 m para que Unity los descarte por distancia/vista.
+#                 Solo donde la textura horneada de la isla es verde (igual que decide el shader), tambien en laderas suaves;
+#                 la densidad y la altura cambian por zonas (claros, hierba alta, mas baja junto al camino).
+#                 UV0 = textura de la mata; UV1 "Datos" = (tinte aleatorio, altura 0..1) para el viento y el color.
 #   Roca_i_j    : cantos y bloques de baja resolucion (alrededor de los "dedos" de roca, la costa y los postes),
 #                 tambien en bloques.
-# Uso: blender -b archivo.blend --python pasto_y_rocas.py -- [--save]
+# Uso: blender -b archivo.blend --python pasto_y_rocas.py -- [--save] [--solo-pasto]
+#      --solo-pasto : rehace solo la hierba; las rocas y ramas que ya hay se quedan donde estan y solo se vuelven a apoyar
+#                     en el terreno (para despues de relieve_terreno.py)
 import bpy, bmesh, math, random, sys, os
 from mathutils import Vector, Matrix, noise
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import ramas_lib
+import ramas_lib, camino_lib, apoyo_lib
 
 S = bpy.context.scene
 I = bpy.data.objects["IslandModel"]
@@ -18,7 +23,8 @@ R = random.Random(21)
 PI = math.pi
 NIVEL_MAR = -0.55
 CELDA = 24.0
-N_PASTO = 15000
+PASO_PASTO = 0.36         # separacion media entre matas (m)
+SOLO_PASTO = "--solo-pasto" in sys.argv
 N_ROCAS_BASE = 190
 N_ROCAS_COSTA = 90
 N_GUIJARROS = 520       # grupos de piedrecitas sueltas
@@ -36,7 +42,12 @@ def suelo(x, y):
 col = bpy.data.collections.get("Vegetacion_Isla")
 if col:
     for o in list(col.objects):
+        if SOLO_PASTO and not o.name.startswith("Pasto_"):
+            continue
+        me_v = o.data
         bpy.data.objects.remove(o, do_unlink=True)
+        if me_v and me_v.users == 0:
+            bpy.data.meshes.remove(me_v)
 else:
     col = bpy.data.collections.new("Vegetacion_Isla")
     S.collection.children.link(col)
@@ -107,66 +118,155 @@ def dist_camino(x, y):
 
 fijos = [((-6.8, 91.5), 14.5), ((13.4, 30.8), 2.6), ((-24.7, 1.7), 2.6), ((-41.6, 42.7), 2.6), ((-23.7, 9.4), 3.0),
          ((36.4, 15.8), 5.5), ((-2.0, 54.6), 7.2), ((-18.2, 49.9), 6.0), ((0, -36), 4.5)]
+# huellas de las piezas vikingas (vikingos.py las deja en vikingo_huellas.json): sin hierba atravesando las piedras
+_huellas = os.path.join(os.path.dirname(os.path.abspath(__file__)), "vikingo_huellas.json")
+if os.path.exists(_huellas):
+    import json
+    fijos += [((h[0], h[1]), h[2]) for h in json.load(open(_huellas))]
 def libre(x, y, margen=0.0):
     return not any((Vector((x, y)) - Vector(c)).length < r + margen for c, r in fijos)
 
 
 # ---------------------------------------------------------------- PASTO
-def mechon(bm, c, n, tinte, esc):
-    """mechon de 9-14 hojas curvadas (3 triangulos cada una: base ancha, mitad y punta). UV = (tinte, altura 0..1)."""
-    hojas = R.randint(9, 14)
-    uvl = bm.loops.layers.uv.verify()
-    for k in range(hojas):
-        ang = 2 * PI * k / hojas + R.uniform(-0.5, 0.5)
-        d = Vector((math.cos(ang), math.sin(ang), 0))
-        t = Vector((-d.y, d.x, 0))
-        alto = R.uniform(0.25, 0.72) * esc * (1.35 if R.random() < 0.08 else 1.0)   # alguna hoja alta suelta
-        ancho = R.uniform(0.04, 0.08) * esc
-        inc = R.uniform(0.12, 0.8)                                                  # cuanto se inclina hacia fuera
-        r0 = R.uniform(0.0, 0.10) * esc
-        b0 = c + d * r0
-        lado = t * R.uniform(-0.12, 0.12) * alto                                   # leve torcedura lateral
-        mid = b0 + d * (alto * inc * 0.3) + lado * 0.5 + Vector((0, 0, alto * 0.52))
-        tip = b0 + d * (alto * inc) + lado + Vector((0, 0, alto * (1 - 0.42 * inc)))
-        v0 = bm.verts.new(b0 - t * ancho)
-        v1 = bm.verts.new(b0 + t * ancho)
-        m0 = bm.verts.new(mid - t * ancho * 0.62)
-        m1 = bm.verts.new(mid + t * ancho * 0.62)
-        v2 = bm.verts.new(tip)
-        u = tinte + R.uniform(-0.03, 0.03)
-        for tri, hs in (((v0, v1, m1), (0.0, 0.0, 0.5)), ((v0, m1, m0), (0.0, 0.5, 0.5)), ((m0, m1, v2), (0.5, 0.5, 1.0))):
-            f = bm.faces.new(tri)
-            for lp, hh in zip(f.loops, hs):
-                lp[uvl].uv = (u, hh)
+import numpy as np
+from mathutils.interpolate import poly_3d_calc
+RP = random.Random(77)                     # azar propio de la hierba (no cambia donde caen rocas y ramas)
+ME = I.data
+UV0 = ME.uv_layers["UVMap"].data
+UVD = ME.uv_layers["Datos"].data if "Datos" in ME.uv_layers else None     # pendiente original (relieve_terreno.py)
+# textura horneada de la isla (reducida): la hierba solo va donde es verde, igual que decide el shader Faro/IslaDetalle
+_im = bpy.data.images.load(os.path.join(os.path.dirname(bpy.data.filepath), "texturas", "Isla_c.jpg"))
+_im.scale(1024, 1024)
+HORNEADA = np.array(_im.pixels[:], dtype=np.float32).reshape(1024, 1024, 4)[..., :3] ** 2.2     # a lineal
+bpy.data.images.remove(_im)
+
+
+def suave(a, b, x):
+    t = max(0.0, min(1.0, (x - a) / (b - a)))
+    return t * t * (3 - 2 * t)
+
+
+def cuanta_hierba(x, y):
+    """(altura del suelo, normal, 0..1 cuanta hierba hay) en el punto; None si no hay isla"""
+    h, l, n, i = I.ray_cast(inv @ Vector((x, y, 500.0)), dl)
+    if not h:
+        return None
+    pol = ME.polygons[i]
+    w = poly_3d_calc([ME.vertices[k].co for k in pol.vertices], l)
+    u = sum(UV0[li].uv[0] * wk for li, wk in zip(pol.loop_indices, w))
+    v = sum(UV0[li].uv[1] * wk for li, wk in zip(pol.loop_indices, w))
+    c = HORNEADA[int(v * 1024) % 1024, int(u * 1024) % 1024]
+    nw = (I.matrix_world.to_3x3() @ n).normalized()
+    ny = sum(UVD[li].uv[0] * wk for li, wk in zip(pol.loop_indices, w)) if UVD else nw.z
+    verde = suave(-0.03, 0.0, c[1] - c[0] * 1.1)
+    return (I.matrix_world @ l).z, nw, verde * suave(0.5, 0.74, ny)
+
+
+# celdas del atlas T_Pasto_Matas.png: 0 media, 1 alta, 2 corta, 3 tallos secos
+def celda_uv(k):
+    cx, cy = k % 2, k // 2
+    m = 0.004
+    return cx * 0.5 + m, cy * 0.5 + m, cx * 0.5 + 0.5 - m, cy * 0.5 + 0.5 - m
+
+
+def mata(bm, uv0, uv1, c, n, alto, ancho, variante, tinte):
+    """3 tarjetas cruzadas, algo desplazadas del centro e inclinadas (asi no se ve una 'X' desde arriba)"""
+    u0, v0, u1, v1 = celda_uv(variante)
+    a0 = RP.uniform(0, PI)
+    arriba = (Vector((0, 0, 0.35)) + n * 0.65).normalized()       # la mata crece casi perpendicular al suelo
+    for k in range(3):
+        a = a0 + k * PI / 3 + RP.uniform(-0.25, 0.25)
+        t = Vector((math.cos(a), math.sin(a), 0))
+        q = Vector((-t.y, t.x, 0))
+        centro = c + q * RP.uniform(-0.12, 0.12) * ancho
+        cae = q * RP.choice((-1, 1)) * RP.uniform(0.25, 0.7) * alto     # la parte de arriba se abre hacia un lado (ninguna tarjeta queda vertical)
+        esq = []
+        for lado in (-0.5, 0.5):
+            p = centro + t * lado * ancho
+            p.z = c.z - (n.x * (p.x - c.x) + n.y * (p.y - c.y)) / max(n.z, 0.3) - 0.04     # la base sigue la pendiente
+            esq.append(p)
+        vs = [bm.verts.new(esq[0]), bm.verts.new(esq[1]),
+              bm.verts.new(esq[1] + cae + arriba * alto), bm.verts.new(esq[0] + cae + arriba * alto)]
+        f = bm.faces.new(vs)
+        ua, ub = (u0, u1) if RP.random() < 0.5 else (u1, u0)
+        for lp, (uu, vv, hh) in zip(f.loops, ((ua, v0, 0.0), (ub, v0, 0.0), (ub, v1, 1.0), (ua, v1, 1.0))):
+            lp[uv0].uv = (uu, vv)
+            lp[uv1].uv = (tinte, hh)
+
 
 celdas = {}
 puestos = 0
-intentos = 0
-while puestos < N_PASTO and intentos < N_PASTO * 6:
-    intentos += 1
-    x, y = R.uniform(-62, 58), R.uniform(-34, 118)
-    g, n = suelo(x, y)
-    if g is None or g < 2.6 or n.z < 0.9:
-        continue
-    if dist_camino(x, y) < 1.9 or not libre(x, y):
-        continue
-    key = (int(math.floor(x / CELDA)), int(math.floor(y / CELDA)))
-    if key not in celdas:
-        celdas[key] = bmesh.new()
-    mechon(celdas[key], Vector((x, y, g - 0.03)), n, R.random(), R.uniform(0.8, 1.25))
-    puestos += 1
+for iy in range(int(-34 / PASO_PASTO), int(118 / PASO_PASTO)):
+    for ix in range(int(-62 / PASO_PASTO), int(58 / PASO_PASTO)):
+        x, y = (ix + RP.random()) * PASO_PASTO, (iy + RP.random()) * PASO_PASTO
+        if not libre(x, y):
+            continue
+        r = cuanta_hierba(x, y)
+        if r is None:
+            continue
+        g, n, hierba = r
+        if g < 1.6 or n.z < 0.6 or hierba < 0.5:
+            continue
+        dc = dist_camino(x, y)
+        # camino principal: la hierba empieza donde acaba la tierra (mismo borde ondulado que usan el relieve y el shader)
+        dp = camino_lib.dist_borde(x, y)
+        if dp < camino_lib.BORDE_TIERRA or (dc < 1.3 and dp > 3.0):       # (los caminos ocultos, como antes: 1.3 m sin matas)
+            continue
+        dc = min(dc, dp)
+        # zonas: claros donde casi no hay matas, manchas de hierba alta y manchas de tallos secos
+        zona = noise.noise(Vector((x / 11.0, y / 11.0, 0.7)))
+        zona2 = noise.noise(Vector((x / 4.3 + 30.0, y / 4.3, 5.1)))
+        densidad = suave(-0.55, 0.05, zona + 0.5 * zona2) * 0.6 + 0.4
+        ralo = 0.3 + 0.7 * suave(camino_lib.BORDE_TIERRA, 2.6, dp)       # junto al camino las matas ralean (hierba pisada con tierra entre medias)
+        if RP.random() > densidad * suave(0.45, 0.95, hierba) * ralo:
+            continue
+        alta = suave(-0.1, 0.5, noise.noise(Vector((x / 15.0 + 9.0, y / 15.0 + 4.0, 2.2))) + 0.35 * zona2)
+        borde = suave(1.3, 4.5, dc)                               # junto al camino, mas baja (pisada)
+        ladera = suave(0.62, 0.85, n.z)                           # en pendiente, mas corta
+        alto = (0.24 + 0.32 * alta + RP.uniform(0.0, 0.16)) * (0.55 + 0.45 * borde) * (0.6 + 0.4 * ladera)
+        seco = noise.noise(Vector((x / 8.0 + 50.0, y / 8.0 + 17.0, 9.3)))
+        if RP.random() < 0.03 + 0.14 * suave(0.1, 0.5, seco):
+            variante, alto = 3, alto * 1.7 + 0.15                 # tallos secos con espiga: mas altos
+        elif alto < 0.3:
+            variante = 2 if RP.random() < 0.75 else 0
+        else:
+            variante = 1 if RP.random() < 0.3 + 0.4 * alta else 0
+        ancho = 0.42 + 0.55 * alto + RP.uniform(0.0, 0.15)
+        key = (int(math.floor(x / CELDA)), int(math.floor(y / CELDA)))
+        if key not in celdas:
+            bmc = bmesh.new()
+            celdas[key] = (bmc, bmc.loops.layers.uv.new("UVMap"), bmc.loops.layers.uv.new("Datos"))
+        bmc, l0, l1 = celdas[key]
+        mata(bmc, l0, l1, Vector((x, y, g)), n, alto, ancho, variante, RP.random())
+        puestos += 1
 tris = 0
-for (i, j), bm in celdas.items():
+for (i, j), (bm, l0, l1) in celdas.items():
     me = bpy.data.meshes.new("Pasto_%d_%d" % (i, j))
     bm.to_mesh(me)
-    tris += len(me.polygons)
+    tris += len(me.polygons) * 2
     bm.free()
     me.materials.append(M_PASTO)
     for p in me.polygons:
         p.use_smooth = False
     ob = bpy.data.objects.new("Pasto_%d_%d" % (i, j), me)
     col.objects.link(ob)
-print("VEG pasto mechones", puestos, "bloques", len(celdas), "tris", tris)
+print("VEG pasto matas", puestos, "bloques", len(celdas), "tris", tris)
+
+if SOLO_PASTO:
+    # rocas y ramas que ya existen: cada pieza suelta sube o baja lo mismo que cambio el suelo debajo de ella
+    base = bpy.data.meshes.get("IslandModel_SinRelieve")
+    hecho = 0
+    if base is not None:
+        # las que ya se apoyaron una vez (apoyado_relieve) las mantiene al dia relieve_terreno.py cada vez que cambia el suelo
+        sueltos = [o for o in col.objects if o.type == 'MESH' and not o.name.startswith("Pasto_") and not o.get("apoyado_relieve")]
+        if sueltos:
+            hecho = apoyo_lib.reapoyar(sueltos, apoyo_lib.arbol(base, I.matrix_world), apoyo_lib.arbol(I.data, I.matrix_world))
+        for o in sueltos:
+            o["apoyado_relieve"] = 1
+    print("VEG rocas y ramas reapoyadas en el terreno: %d piezas movidas" % hecho)
+    if "--save" in sys.argv:
+        bpy.ops.wm.save_mainfile()
+    sys.exit(0)
 
 
 # ---------------------------------------------------------------- ROCAS SUELTAS

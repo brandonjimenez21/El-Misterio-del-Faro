@@ -38,6 +38,7 @@ public class LluviaSigueCamara : MonoBehaviour
         if (zonasInterior != null)
             foreach (var z in zonasInterior) if (z != null && z.bounds.Contains(p)) { dentro = true; break; }
         factorInterior = Mathf.MoveTowards(factorInterior, dentro ? 0f : 1f, Time.deltaTime * suavizado);
+        NieblaVolumetricaFeature.FactorExterior = factorInterior;   // la bruma volumetrica baja bajo techo
 
         if (lluvia != null)
         {

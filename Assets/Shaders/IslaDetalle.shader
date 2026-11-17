@@ -2,9 +2,14 @@
 //  - roca: detalle "triplanar" (se proyecta por el mundo, sin estirarse en paredes y "dedos") en 3 escalas,
 //  - pasto: detalle de hebras proyectado desde arriba en las zonas verdes, en 3 escalas,
 //  - variacion de color a gran escala (rompe la repeticion), humedad en la costa y oclusion por el relieve del detalle.
-// El detalle se desvanece con la distancia (barato y sin repeticiones visibles); la escala fina solo cerca de la camara.
+// Con la distancia el detalle NO se apaga: a partir de _DistDetalle se cambia por capas mas grandes (roca x0.21 / x0.8,
+// suelo x0.19) que siguen teniendo relieve y contraste vistas de lejos y no dejan ver la repeticion; solo se apaga del todo
+// en _DistLejos (ya dentro de la niebla). La escala fina solo cerca de la camara.
 // v2: recibe la luz horneada de los Adaptive Probe Volumes (APV), el SSAO, las sombras suaves del pipeline y las reflection probes.
 // _Modo = 1 sirve para rocas sueltas (usa _Color en vez de la textura horneada).
+// Camino principal (_CaminoDatos = 1, la malla trae la UV3 "Camino" de relieve_terreno.py): la tierra sigue el trazado real
+// (no la textura horneada, que la dejaba como una tira de borde recto), a los lados hay una franja de hierba pisada con tierra
+// entre medias, y los charcos de lluvia salen en los baches de la malla (varios charcos separados que crecen, no todo el camino).
 Shader "Faro/IslaDetalle"
 {
     Properties
@@ -31,12 +36,18 @@ Shader "Faro/IslaDetalle"
         _TerArenaN ("Capa arena (normal)", 2D) = "bump" {}
         _EscalaTerreno ("Escala de las capas de terreno (1/m)", Float) = 0.5
         _VientoArbol ("Viento sobre el objeto (m, 0 = quieto)", Range(0, 0.6)) = 0
-        _DistDetalle ("Distancia del detalle (m)", Float) = 130
+        _DistDetalle ("Distancia a la que el detalle cercano cambia por el lejano (m)", Float) = 90
+        _DistLejos ("Hasta donde llega el detalle lejano (m)", Float) = 420
+        _LejosSuelo ("Cuanto se nota la capa lejana del suelo", Range(0, 1)) = 0.7
         _DistFino ("Distancia del detalle fino (m)", Float) = 28
         _VariacionMacro ("Variacion de color a gran escala", Range(0, 1)) = 0.5
         _NivelMar ("Nivel del mar (y)", Float) = -0.7
         _AltoMojado ("Altura de la franja mojada (m)", Float) = 1.1
         _Modo ("0 = isla, 1 = roca suelta", Float) = 0
+        _RelieveDatos ("La malla trae datos de relieve en UV2 (relieve_terreno.py)", Float) = 0
+        _CaminoDatos ("La malla trae el camino en UV3 (relieve_terreno.py)", Float) = 0
+        _SombraHierba ("Suelo oscurecido bajo las matas de hierba", Range(0, 1)) = 0
+        _DistHierba ("Hasta donde hay matas de hierba (m)", Float) = 54
         _Debug ("Depuracion de mascaras", Float) = 0
     }
     SubShader
@@ -77,16 +88,17 @@ Shader "Faro/IslaDetalle"
             TEXTURE2D(_TerArenaN); SAMPLER(sampler_TerArenaN);
             float _FaroCalma, _FaroRafaga;   // globales (ReaccionViento.cs)
             float _FaroLluvia, _FaroCharcos;                // globales (ClimaAgua.cs): fuerza de la lluvia y agua acumulada
+            float _FaroRecorteHierba;                       // global (CalidadAutomatica.cs): cuanto menos lejos llegan las matas (0 = normal)
             float _FaroRelampago;                           // global (Relampagos.cs)
             float4 _FaroOlaMojado, _FaroOlaMojado2;         // hasta donde mojo la ultima ola grande (ClimaAgua.cs)
             CBUFFER_START(UnityPerMaterial)
                 float4 _BaseMap_ST;
                 half4 _Color;
                 float _EscalaRoca, _EscalaRoca2, _EscalaRoca3, _EscalaPasto, _EscalaPasto3, _FuerzaColor, _FuerzaNormal;
-                float _DistDetalle, _DistFino, _VariacionMacro, _NivelMar, _AltoMojado, _Modo, _EscalaTerreno, _Debug, _VientoArbol;
+                float _DistDetalle, _DistFino, _VariacionMacro, _NivelMar, _AltoMojado, _Modo, _EscalaTerreno, _Debug, _VientoArbol, _RelieveDatos, _SombraHierba, _DistHierba, _DistLejos, _LejosSuelo, _CaminoDatos;
             CBUFFER_END
 
-            struct Attributes { float4 positionOS : POSITION; float3 normalOS : NORMAL; float4 tangentOS : TANGENT; float2 uv : TEXCOORD0; };
+            struct Attributes { float4 positionOS : POSITION; float3 normalOS : NORMAL; float4 tangentOS : TANGENT; float2 uv : TEXCOORD0; float2 uv1 : TEXCOORD1; float2 uv2 : TEXCOORD2; };
             struct Varyings
             {
                 float4 positionCS : SV_POSITION;
@@ -95,6 +107,8 @@ Shader "Faro/IslaDetalle"
                 half3 normalWS : TEXCOORD2;
                 half4 tangentWS : TEXCOORD3;
                 half fogFactor : TEXCOORD4;
+                half4 datos : TEXCOORD5;     // x = pendiente original (antes del relieve), y = cuanto subio/bajo el suelo (0.5 = nada)
+                                             // z = camino principal (1 en el eje ... 0 a 6 m), w = baches del camino (0..1)
             };
 
             Varyings vert(Attributes IN)
@@ -121,6 +135,7 @@ Shader "Faro/IslaDetalle"
                 OUT.normalWS = vn.normalWS;
                 OUT.tangentWS = half4(vn.tangentWS, IN.tangentOS.w * GetOddNegativeScale());
                 OUT.fogFactor = ComputeFogFactor(vp.positionCS.z);
+                OUT.datos = half4(IN.uv1, IN.uv2 * _CaminoDatos);
                 return OUT;
             }
 
@@ -203,12 +218,16 @@ Shader "Faro/IslaDetalle"
                 half3 nT = lerp(UnpackNormal(SAMPLE_TEXTURE2D(_BumpMap, sampler_BumpMap, IN.uv)), half3(0, 0, 1), _Modo);
                 half3 Nb = normalize(TransformTangentToWorld(nT, half3x3(T, B, Ng)));
 
-                // distancia -> el detalle se va apagando (la escala fina, antes)
+                // distancia -> las capas cercanas dejan paso a las lejanas (mas grandes); la escala fina se apaga antes
                 float dist = distance(pw, _WorldSpaceCameraPos);
-                half fade = 1.0 - smoothstep(_DistDetalle * 0.55, _DistDetalle, dist);
+                half lejos = smoothstep(_DistDetalle * 0.4, _DistDetalle, dist);        // 0 = capas cercanas, 1 = capas lejanas
+                half fade = 1.0 - smoothstep(_DistLejos * 0.6, _DistLejos, dist);       // el detalle solo desaparece muy lejos
                 half fino = 1.0 - smoothstep(_DistFino * 0.5, _DistFino, dist);
 
                 half3 w = pow(abs(Ng), 4.0); w /= (w.x + w.y + w.z + 1e-4);
+                // con relieve en la malla, QUE material va en cada sitio se sigue decidiendo con la pendiente original (si no, saldria arena en cada repisa de roca)
+                half nyC = lerp(Ng.y, IN.datos.x, _RelieveDatos);
+                half hueco = (0.5 - IN.datos.y) * _RelieveDatos;      // > 0 en los hoyos del terreno, < 0 en las lomas
                 half llano = smoothstep(0.72, 0.9, Ng.y);
                 half3 N = Nb;
                 half cavidad = 1.0;
@@ -217,6 +236,7 @@ Shader "Faro/IslaDetalle"
                 half pasto;      // pasto (isla) o musgo (roca suelta): se usa mas abajo para el tinte seco
                 half tipoCharco = 0;   // cuanto junta agua el suelo (camino de tierra mucho, arena algo, hierba poco, roca nada)
                 half hS = 1;           // altura del relieve de la capa de suelo (lo bajo se llena antes)
+                half caminoM = 0;      // cuanto es camino principal (0..1): ahi los charcos van a los baches de la malla
                 if (_Modo > 0.5)
                 {
                     // ---------- roca suelta: roca triplanar + musgo en las caras de arriba
@@ -258,11 +278,26 @@ Shader "Faro/IslaDetalle"
                     half kAlt = smoothstep(0.42, 0.58, macroN);          // que muestra de cada capa domina (anti-repeticion)
                     half verde = smoothstep(-0.03, 0.0, baseS.g - baseS.r * 1.1 + (borde - 0.5) * 0.03);   // el camino y la orilla son claramente no verdes
                     half lumB = dot(baseS.rgb, half3(0.3, 0.59, 0.11));
-                    half suelo2 = smoothstep(0.5, 0.74, Ng.y);                    // pendientes suaves/medias tambien son suelo (hierba, tierra, arena)
+                    half suelo2 = smoothstep(0.5, 0.74, nyC);                    // pendientes suaves/medias tambien son suelo (hierba, tierra, arena)
                     half otro = (1.0 - verde) * suelo2;
                     half wG = verde * suelo2;
                     half wD = otro * smoothstep(0.56 + (borde - 0.5) * 0.12, 0.44, lumB);       // oscuro y calido = camino de tierra
                     half wS = otro - wD;                                                          // claro = arena
+                    if (IN.datos.z > 0.001)
+                    {
+                        // camino principal: dentro de su franja la tierra la pone el trazado (borde ondulado), no la textura horneada
+                        half corredor = smoothstep(0.02, 0.2, IN.datos.z);
+                        wG += wD * corredor;
+                        wD *= 1.0 - corredor;
+                        half dC = (1.0 - IN.datos.z) * 6.0 + (borde - 0.5) * 0.45 + (Ruido(pw.xz * 1.9 + 5.3) - 0.5) * 0.55;   // metros al eje, con el borde roto por ruido
+                        half nucleo = 1.0 - smoothstep(0.65, 1.35, dC);                  // tierra pisada
+                        half franja = 1.0 - smoothstep(1.2, 2.7, dC);                   // hierba pisada: la tierra asoma entre las hebras
+                        half pesoC = nucleo + (1.0 - nucleo) * franja * 0.6;
+                        half t = wG * pesoC;
+                        wD += t;
+                        wG -= t;
+                        caminoM = franja * suelo2;
+                    }
                     dbg = half3(wG, wD, wS);
                     half wR = 1.0 - (wG + wD + wS);                                               // el resto (pendientes) = roca
 
@@ -272,19 +307,28 @@ Shader "Faro/IslaDetalle"
                         half4 cG = 0, cD = 0, cS = 0;
                         half3 nGt = 0, nDt = 0, nSt = 0;
                         half fN = _FuerzaNormal * fade;
-                        if (wG > 0.002) { cG = CapaColorT(TEXTURE2D_ARGS(_TerHierba, sampler_TerHierba), pw, w, uvT, kAlt, _EscalaTerreno); nGt = CapaNormal(TEXTURE2D_ARGS(_TerHierbaN, sampler_TerHierbaN), uvT, kAlt, fN); }
-                        if (wD > 0.002) { cD = CapaColorT(TEXTURE2D_ARGS(_TerTierra, sampler_TerTierra), pw, w, uvT, kAlt, _EscalaTerreno); nDt = CapaNormal(TEXTURE2D_ARGS(_TerTierraN, sampler_TerTierraN), uvT, kAlt, fN); }
-                        if (wS > 0.002) { cS = CapaColorT(TEXTURE2D_ARGS(_TerArena, sampler_TerArena), pw, w, uvT, kAlt, _EscalaTerreno); nSt = CapaNormal(TEXTURE2D_ARGS(_TerArenaN, sampler_TerArenaN), uvT, kAlt, fN); }
+                        // de lejos la capa de 2 m se queda en un color liso: se mezcla la misma capa 5 veces mas grande (girada)
+                        float2 uvL = float2(uvT.x * 0.8 + uvT.y * 0.6, uvT.y * 0.8 - uvT.x * 0.6) * 0.19 + 0.43;
+                        half kL = lejos * _LejosSuelo * fade;
+                        if (wG > 0.002) { cG = CapaColorT(TEXTURE2D_ARGS(_TerHierba, sampler_TerHierba), pw, w, uvT, kAlt, _EscalaTerreno); nGt = CapaNormal(TEXTURE2D_ARGS(_TerHierbaN, sampler_TerHierbaN), uvT, kAlt, fN);
+                            if (kL > 0.001) { cG = lerp(cG, SAMPLE_TEXTURE2D(_TerHierba, sampler_TerHierba, uvL), kL); nGt = lerp(nGt, UnpackNormalScale(SAMPLE_TEXTURE2D(_TerHierbaN, sampler_TerHierbaN, uvL), fN * 1.4), kL); } }
+                        if (wD > 0.002) { cD = CapaColorT(TEXTURE2D_ARGS(_TerTierra, sampler_TerTierra), pw, w, uvT, kAlt, _EscalaTerreno); nDt = CapaNormal(TEXTURE2D_ARGS(_TerTierraN, sampler_TerTierraN), uvT, kAlt, fN);
+                            if (kL > 0.001) { cD = lerp(cD, SAMPLE_TEXTURE2D(_TerTierra, sampler_TerTierra, uvL), kL); nDt = lerp(nDt, UnpackNormalScale(SAMPLE_TEXTURE2D(_TerTierraN, sampler_TerTierraN, uvL), fN * 1.4), kL); } }
+                        if (wS > 0.002) { cS = CapaColorT(TEXTURE2D_ARGS(_TerArena, sampler_TerArena), pw, w, uvT, kAlt, _EscalaTerreno); nSt = CapaNormal(TEXTURE2D_ARGS(_TerArenaN, sampler_TerArenaN), uvT, kAlt, fN);
+                            if (kL > 0.001) { cS = lerp(cS, SAMPLE_TEXTURE2D(_TerArena, sampler_TerArena, uvL), kL); nSt = lerp(nSt, UnpackNormalScale(SAMPLE_TEXTURE2D(_TerArenaN, sampler_TerArenaN, uvL), fN * 1.4), kL); } }
                         // mezcla por altura: la capa mas "alta" en cada pixel gana y el borde es nitido (grava que asoma entre la hierba...)
                         half3 b = half3(wG, wD, wS);
                         half3 hh = half3(cG.a, cD.a, cS.a) * 0.9 + b;
                         half mh = max(hh.x, max(hh.y, hh.z)) - 0.38;
                         half3 bb = max(hh - mh, 0.0) * step(0.002, b);
                         bb /= (bb.x + bb.y + bb.z + 1e-4);
-                        albG = cG.rgb * bb.x + cD.rgb * 1.25 * bb.y + cS.rgb * 0.55 * bb.z;
-                        nG = nGt * bb.x + nDt * bb.y + nSt * bb.z;
+                        // bajo las matas de hierba (Faro/Pasto) el suelo esta en sombra: se oscurece hasta donde llegan las matas
+                        half distMatas = _DistHierba * (1.0 - _FaroRecorteHierba);
+                        half bajoMatas = 1.0 - _SombraHierba * (1.0 - smoothstep(distMatas * 0.7, distMatas, dist));
+                        albG = cG.rgb * lerp(bajoMatas, 1.0, caminoM * 0.6) * bb.x + cD.rgb * 1.5 * bb.y + cS.rgb * 0.55 * bb.z;
+                        nG = nGt * bb.x + nDt * 0.6 * bb.y + nSt * bb.z;
                         hSuelo = cG.a * bb.x + cD.a * bb.y + cS.a * bb.z;
-                        suelo = 0.1 * bb.x + 0.32 * bb.y + 0.2 * bb.z;
+                        suelo = 0.1 * bb.x + lerp(0.2, 0.3, cD.a) * bb.y + 0.2 * bb.z;
                         // tinte suave de la textura horneada (cambios de color a gran escala pintados en Blender)
                         albG *= lerp(1.0, saturate(baseS.rgb / max(lumB, 0.08)), 0.18);
                         // las capas se proyectan desde arriba: la normal se tuerce sobre la normal base
@@ -292,14 +336,30 @@ Shader "Faro/IslaDetalle"
                     }
                     if (wR > 0.001 && fade > 0.001)
                     {
-                        half3 r1 = TriColor(TEXTURE2D_ARGS(_DetRoca, sampler_DetRoca), pw, _EscalaRoca, w);
-                        half3 r2 = TriColor(TEXTURE2D_ARGS(_DetRoca, sampler_DetRoca), pw + 17.3, _EscalaRoca2, w);
-                        half3 rocaC = r1 * r2 * 1.9;
                         // la normal horneada trae grietas grandes "de baldosa": se atenua y el relieve lo ponen las capas de detalle
                         half3 Nroca = normalize(lerp(Ng, Nb, 0.3));
-                        nR = TriNormal(TEXTURE2D_ARGS(_DetRocaN, sampler_DetRocaN), pw, _EscalaRoca2, Nroca, w, _FuerzaNormal * 2.2 * fade);
-                        nR = TriNormal(TEXTURE2D_ARGS(_DetRocaN, sampler_DetRocaN), pw + 17.3, _EscalaRoca * 1.7, nR, w, _FuerzaNormal * 1.5 * fade);
-                        nR = TriNormal(TEXTURE2D_ARGS(_DetRocaN, sampler_DetRocaN), pw * 0.37 + 5.1, _EscalaRoca2, nR, w, _FuerzaNormal * 1.6 * fade);   // relieve grande
+                        half3 rocaC = 1;
+                        nR = Nroca;
+                        half fNr = _FuerzaNormal * fade;
+                        if (lejos < 0.999)
+                        {
+                            // capas cercanas (tiles de 3.3 m y 0.7 m)
+                            half3 r1 = TriColor(TEXTURE2D_ARGS(_DetRoca, sampler_DetRoca), pw, _EscalaRoca, w);
+                            half3 r2 = TriColor(TEXTURE2D_ARGS(_DetRoca, sampler_DetRoca), pw + 17.3, _EscalaRoca2, w);
+                            rocaC = r1 * r2 * 1.9;
+                            nR = TriNormal(TEXTURE2D_ARGS(_DetRocaN, sampler_DetRocaN), pw, _EscalaRoca2, nR, w, fNr * 2.2 * (1.0 - lejos));
+                            nR = TriNormal(TEXTURE2D_ARGS(_DetRocaN, sampler_DetRocaN), pw + 17.3, _EscalaRoca * 1.7, nR, w, fNr * 1.5 * (1.0 - lejos));
+                        }
+                        if (lejos > 0.001)
+                        {
+                            // capas lejanas (tiles de 16 m y 4 m): la roca sigue teniendo vetas, bloques y relieve vista desde lejos
+                            half3 l1 = TriColor(TEXTURE2D_ARGS(_DetRoca, sampler_DetRoca), pw + 7.9, _EscalaRoca * 0.21, w);
+                            half3 l2 = TriColor(TEXTURE2D_ARGS(_DetRoca, sampler_DetRoca), pw + 23.1, _EscalaRoca * 0.8, w);
+                            rocaC = lerp(rocaC, l1 * l2 * 1.9, lejos);
+                            nR = TriNormal(TEXTURE2D_ARGS(_DetRocaN, sampler_DetRocaN), pw + 23.1, _EscalaRoca * 0.8, nR, w, fNr * 2.4 * lejos);
+                            nR = TriNormal(TEXTURE2D_ARGS(_DetRocaN, sampler_DetRocaN), pw + 7.9, _EscalaRoca * 0.21, nR, w, fNr * 1.8 * lejos);
+                        }
+                        nR = TriNormal(TEXTURE2D_ARGS(_DetRocaN, sampler_DetRocaN), pw * 0.37 + 5.1, _EscalaRoca2, nR, w, fNr * 1.6);   // relieve grande
                         if (fino > 0.001)
                         {
                             half3 r3 = TriColor(TEXTURE2D_ARGS(_DetRoca, sampler_DetRoca), pw + 41.7, _EscalaRoca3, w);
@@ -323,6 +383,7 @@ Shader "Faro/IslaDetalle"
                     alb = albR * wR + albG * (1.0 - wR);
                     N = normalize(nR * wR + nG * (1.0 - wR));
                     cavidad *= lerp(1.0, lerp(0.55, 1.0, hSuelo), (1.0 - wR));
+                    cavidad *= saturate(1.0 - hueco * 0.7 * (1.0 - wR));       // los hoyos del terreno reciben menos luz del cielo
                     suav = lerp(suelo, 0.2, wR);
                     pasto = wG;
                     tipoCharco = wD * 1.0 + wS * 0.75 + wG * 0.45;
@@ -344,7 +405,7 @@ Shader "Faro/IslaDetalle"
                 half humedad = saturate(_FaroLluvia * 0.6 + _FaroCharcos * 0.6);
                 half poroso = lerp(1.0, 0.45, pasto);
                 alb *= lerp(1.0, 0.78, humedad * poroso);
-                suav = lerp(suav, max(suav, lerp(0.4, 0.22, pasto)), humedad);
+                suav = lerp(suav, max(suav, lerp(lerp(0.4, 0.3, caminoM), 0.22, pasto)), humedad);
 
                 // ---------- charcos: en lo llano y en los huecos se junta el agua; crecen mientras llueve (_FaroCharcos)
                 half3 dbgCharco = 0;
@@ -352,17 +413,24 @@ Shader "Faro/IslaDetalle"
                 half3 Nagua = half3(0, 1, 0);
                 if (_FaroCharcos > 0.001 && tipoCharco > 0.01)
                 {
-                    half plano = smoothstep(0.93, 0.985, Ng.y);
+                    half plano = smoothstep(0.93, 0.985, lerp(Ng.y, max(nyC, Ng.y), _RelieveDatos));
                     dbgCharco.b = plano;
                     // profundidad del hueco: ruido de dos escalas (charcos grandes y pequenos) + relieve de la capa de suelo
                     half hondo = 1.0 - (Ruido(pw.xz * 0.33 + 3.7) * 0.55 + Ruido(pw.xz * 0.95 + 9.1) * 0.3 + Ruido(pw.xz * 2.6 + 1.3) * 0.15);
                     hondo += (0.5 - hS) * 0.3;      // las piedras y matas mas altas asoman dentro del charco
+                    hondo += hueco * 0.9;           // el agua se junta en los hoyos del terreno y deja secas las lomas
+                    if (caminoM > 0.001)
+                    {
+                        // camino principal: el agua va a los baches de la malla (IN.datos.w), primero al fondo; las piedras asoman
+                        half hondoC = 0.40 + IN.datos.w * 0.52 + (0.5 - hS) * 0.22 + (Ruido(pw.xz * 2.6 + 1.3) - 0.5) * 0.1;
+                        hondo = lerp(hondo, hondoC, caminoM);
+                    }
                     half umbral = 1.0 - _FaroCharcos * 0.4 * tipoCharco * plano;
                     half charco = smoothstep(umbral, umbral + 0.025, hondo) * plano;
-                    half barro = smoothstep(umbral - 0.07, umbral, hondo) * plano;          // borde embarrado alrededor
+                    half barro = smoothstep(umbral - lerp(0.07, 0.16, caminoM), umbral, hondo) * plano;   // borde embarrado alrededor
                     dbgCharco.rg = half2(charco, barro);
                     alb *= lerp(1.0, 0.62, barro);
-                    suav = lerp(suav, 0.8, barro);
+                    suav = lerp(suav, lerp(0.8, 0.6, caminoM), barro);
                     if (charco > 0.001)
                     {
                         // agua: casi negra, espejo, plana con anillos de gotas
@@ -423,6 +491,7 @@ Shader "Faro/IslaDetalle"
                     c.rgb += half3(0.5, 0.56, 0.75) * _FaroRelampago * (0.1 + fresW) * charcoF;   // destello del relampago
                 }
                 c.rgb = MixFog(c.rgb, id.fogCoord);
+                if (_Debug > 3.5) return half4(IN.datos.z, IN.datos.w, caminoM, 1);
                 if (_Debug > 2.5) return half4(dbgCharco, 1);
                 if (_Debug > 1.5) return half4(alb, 1);
                 if (_Debug > 0.5) return half4(dbg, 1);

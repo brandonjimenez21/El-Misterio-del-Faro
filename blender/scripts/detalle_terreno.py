@@ -1,7 +1,7 @@
 # Capas de terreno "tileables" (1024 px, periodicas) para el shader Faro/IslaDetalle v3.
 # Cada capa sale como RGBA: RGB = color (albedo, valores absolutos) y A = altura (para mezclar capas por altura, sin transiciones borrosas).
 #   T_Ter_Hierba.png / T_Ter_Hierba_N.png : cesped corto (hebras en varias direcciones, motas secas, huecos de tierra)
-#   T_Ter_Tierra.png / T_Ter_Tierra_N.png : tierra de camino con guijarros y grava
+#   T_Ter_Tierra.png / T_Ter_Tierra_N.png : tierra de camino pisada y humeda, con gravilla, piedras medio enterradas y paja seca
 #   T_Ter_Arena.png  / T_Ter_Arena_N.png  : arena de orilla con granos, ondulaciones y piedrecitas
 # Uso: blender -b archivo.blend --python detalle_terreno.py
 import bpy, os, numpy as np
@@ -182,27 +182,39 @@ C *= (0.85 + 0.3 * fbm(3.0, 132))[..., None]
 guardar("T_Ter_Hierba.png", C, H, True)
 guardar("T_Ter_Hierba_N.png", normal_de(suavizar(H, 1), 3.2), None, False)
 
-# ------------------------------------------------------------ TIERRA DE CAMINO CON GUIJARROS
-grumo = fbm(1.2, 140) * 0.55 + fbm(0.7, 141) * 0.45
-H = 0.10 + 0.18 * grumo
-C = mezcla(col(0.11, 0.08, 0.052), col(0.25, 0.19, 0.13), smooth(grumo, 0.3, 0.85)) * (0.85 + 0.3 * fbm(2.6, 144))[..., None]
+# ------------------------------------------------------------ TIERRA DE CAMINO (pisada y humeda)
+# Antes era un lecho de guijarros grises claros: de noche brillaba y no pegaba con la hierba. Ahora es tierra apisonada oscura
+# (mas oscura y humeda en lo bajo), gravilla, alguna piedra medio enterrada y paja seca pisada. La altura (alfa) deja lo bajo
+# para el agua de los charcos y lo alto (piedras, terrones) asomando.
+terron = fbm(2.0, 140)                                         # lomas suaves de la tierra apisonada
+grumo = fbm(1.0, 141)                                          # grumos
+grano = fbm(0.3, 142)                                          # granulado fino
+H = 0.30 + 0.17 * terron + 0.10 * grumo + 0.05 * grano
+seca = np.clip(0.75 * smooth(terron, 0.25, 0.7) + 0.25 * smooth(grumo, 0.3, 0.8), 0, 1)     # lo alto esta mas seco y claro
+C = mezcla(col(0.058, 0.042, 0.029), col(0.150, 0.108, 0.072), seca)
+C = C * (0.86 + 0.28 * fbm(2.6, 144))[..., None] * (0.9 + 0.2 * grano)[..., None]
 
 
 def pal_piedra(r):
-    g = r.uniform(0.17, 0.42)                                  # grises calidos (nunca verdes ni violetas)
+    g = r.uniform(0.10, 0.24)                                  # piedras oscuras y calidas (mojadas), nunca gris claro
     c = r.choice(3)
-    t = ((1.0, 0.93, 0.83), (0.97, 0.94, 0.88), (0.92, 0.9, 0.86))[c]
+    t = ((1.0, 0.9, 0.78), (0.96, 0.92, 0.84), (0.9, 0.88, 0.84))[c]
     return (g * t[0], g * t[1], g * t[2])
 
 
-piedrecitas(1900, 21, 3, 9, pal_piedra, H, C, z0=0.16, escala_h=0.5)    # grava fina
-piedrecitas(520, 22, 9, 22, pal_piedra, H, C, z0=0.2, escala_h=0.6)     # guijarros medianos
-piedrecitas(40, 23, 24, 44, pal_piedra, H, C, z0=0.25, escala_h=0.7)    # piedras grandes
+# z0 cerca del nivel de la tierra: de cada piedra solo asoma la parte de arriba (medio enterradas)
+piedrecitas(950, 21, 2, 5, pal_piedra, H, C, z0=0.27, escala_h=0.22)     # gravilla
+piedrecitas(150, 22, 6, 14, pal_piedra, H, C, z0=0.30, escala_h=0.32)    # guijarros
+piedrecitas(14, 23, 16, 30, pal_piedra, H, C, z0=0.32, escala_h=0.42)    # alguna piedra grande
+# paja y hebras secas pisadas, tumbadas sobre la tierra (enlaza con la hierba de los lados)
+Yp, Xp, Hp, Cp = hojas(280, 77, 16, 44, 1.5)
+lum = np.clip((Cp @ np.array([0.3, 0.59, 0.11])) / 0.12, 0.55, 1.4)
+pintar(Yp, Xp, H, C, 0.50 + 0.12 * Hp, np.array([0.19, 0.15, 0.08])[None, :] * lum[:, None])
 H = np.clip((H - H.min()) / (H.max() - H.min()), 0, 1)
-cavidad = np.clip((suavizar(H, 6) - H) * 5.0, 0, 1)                      # huecos entre piedras: mas oscuros
-C = C * (1.0 - 0.55 * cavidad)[..., None] * (0.88 + 0.24 * fbm(0.6, 145))[..., None]
+cavidad = np.clip((suavizar(H, 6) - H) * 4.0, 0, 1)                      # huecos: mas oscuros
+C = C * (1.0 - 0.45 * cavidad)[..., None] * (0.9 + 0.2 * fbm(0.6, 145))[..., None]
 guardar("T_Ter_Tierra.png", C, H, True)
-guardar("T_Ter_Tierra_N.png", normal_de(suavizar(H, 1), 4.0), None, False)
+guardar("T_Ter_Tierra_N.png", normal_de(suavizar(H, 2), 2.2), None, False)
 
 # ------------------------------------------------------------ ARENA / GRAVA DE ORILLA
 grano = fbm(0.4, 150)

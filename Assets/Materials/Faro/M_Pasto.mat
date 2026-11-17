@@ -22,19 +22,26 @@ Material:
   m_LockedProperties: 
   m_SavedProperties:
     serializedVersion: 3
-    m_TexEnvs: []
+    m_TexEnvs:
+    - _MainTex:
+        m_Texture: {fileID: 2800000, guid: a7b90f6e707065d44967998c2efebd8c, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
-    - _DistFin: 54
-    - _DistIni: 38
+    - _Brillo: 1
+    - _Corte: 0.35
+    - _DistFin: 100
+    - _DistIni: 70
     - _ParchesSecos: 0.6
+    - _SombraBase: 0.7
     - _Translucidez: 0.85
     - _Variacion: 0.5
     - _VelViento: 1.8
     - _Viento: 0.3
     m_Colors:
-    - _ColorBase: {r: 0.03, g: 0.05, b: 0.015, a: 1}
-    - _ColorPunta: {r: 0.2, g: 0.27, b: 0.08, a: 1}
+    - _ColorBase: {r: 0.55, g: 0.6, b: 0.5, a: 1}
+    - _ColorPunta: {r: 1, g: 1, b: 1, a: 1}
     - _ColorSeco: {r: 1.5, g: 1.15, b: 0.54999995, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1
