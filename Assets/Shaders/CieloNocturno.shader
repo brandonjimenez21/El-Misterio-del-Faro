@@ -32,6 +32,8 @@ Shader "Faro/CieloNocturno"
                 float4 _DirLuna;
                 float _TamLuna, _BrilloLuna, _Estrellas, _Nubes, _VelNubes;
             CBUFFER_END
+            float _FaroRelampago;          // global (Relampagos.cs)
+            float4 _FaroRelampagoDir;
 
             struct Attributes { float4 positionOS : POSITION; };
             struct Varyings { float4 positionCS : SV_POSITION; float3 dir : TEXCOORD0; };
@@ -87,9 +89,16 @@ Shader "Faro/CieloNocturno"
                 float fadeH = smoothstep(0.02, 0.35, h);
                 col += estrella * parpadeo * fadeH * _Estrellas * lerp(half3(0.8, 0.9, 1.0), half3(1.0, 0.9, 0.75), frac(r * 97.0));
 
-                // nubes finas que se desplazan lentamente (proyeccion plana)
-                float2 cp = d.xz / (h + 0.35) * 1.6 + _Time.y * _VelNubes * float2(1.0, 0.4);
-                float nube = smoothstep(0.45, 0.85, fbm(cp)) * smoothstep(-0.02, 0.25, h) * _Nubes;
+                // nubes de tormenta: dos capas con deformacion (masas pesadas abajo, jirones rapidos arriba) y claros
+                float2 cp = d.xz / (h + 0.28) * 1.4;
+                float2 viento = _Time.y * _VelNubes * float2(1.0, 0.4);
+                float2 warp = float2(fbm(cp * 0.7 + viento * 0.5 + 3.1), fbm(cp * 0.7 - viento * 0.5 + 8.4)) - 0.5;
+                float masa = fbm(cp * 0.9 + warp * 1.6 + viento);
+                float jiron = fbm(cp * 2.6 + warp * 0.8 + viento * 2.3 + 11.0);
+                float cobertura = lerp(0.62, 0.30, _Nubes);
+                float nube = smoothstep(cobertura, cobertura + 0.28, masa * 0.8 + jiron * 0.32);
+                float grosor = saturate((masa - cobertura) * 2.4);                          // centro de la masa: mas oscuro
+                nube *= smoothstep(-0.02, 0.18, h);
 
                 // luna: disco con manchas, halo
                 float cosA = dot(d, m);
@@ -104,11 +113,19 @@ Shader "Faro/CieloNocturno"
                 half3 haloCol = _ColorLuna.rgb * halo * _BrilloLuna * 0.5;
 
                 // las nubes tapan estrellas y se iluminan junto a la luna
-                col *= (1.0 - nube * 0.8);
-                half3 nubeCol = lerp(half3(0.035, 0.05, 0.075), _ColorLuna.rgb * 0.5, saturate(pow(saturate(cosA), 6.0)));
+                col *= (1.0 - nube * 0.92);
+                // base oscura, borde plateado donde la luna las ilumina por detras
+                float cercaLuna = saturate(pow(saturate(cosA), 5.0));
+                half3 nubeCol = lerp(half3(0.030, 0.040, 0.058), half3(0.012, 0.016, 0.024), grosor);
+                float borde = nube * (1.0 - grosor) * (1.0 - nube * 0.6);
+                nubeCol += _ColorLuna.rgb * (cercaLuna * 0.45 * (1.0 - grosor) + borde * cercaLuna * 0.9);
+                // relampago: las nubes se encienden por dentro, mas del lado donde cae el rayo
+                float lado = 0.35 + 0.65 * pow(saturate(dot(d, normalize(_FaroRelampagoDir.xyz + float3(0, 0.001, 0))) * 0.5 + 0.5), 3.0);
+                nubeCol += half3(0.55, 0.62, 0.85) * _FaroRelampago * lado * (0.4 + 0.6 * jiron) * (0.6 + 0.8 * (1.0 - grosor));
                 col += nube * nubeCol;
-                col += haloCol * (1.0 - nube * 0.7);
-                col = lerp(col, lunaCol, disco * (1.0 - nube * 0.85));
+                col += half3(0.10, 0.12, 0.18) * _FaroRelampago * lado * (1.0 - nube) * 0.5;
+                col += haloCol * (1.0 - nube * 0.9);
+                col = lerp(col, lunaCol, disco * (1.0 - smoothstep(0.1, 0.7, nube)));
 
                 // horizonte hacia el color de la niebla (para que no se note el corte) y mar oscuro abajo
                 col = lerp(unity_FogColor.rgb, col, smoothstep(-0.02, 0.22, h));

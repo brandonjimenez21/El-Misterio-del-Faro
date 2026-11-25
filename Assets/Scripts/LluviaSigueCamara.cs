@@ -25,6 +25,11 @@ public class LluviaSigueCamara : MonoBehaviour
     float factorInterior = 1f;   // 1 = fuera, 0 = dentro
     Transform cam;
 
+    /// <summary>Cuanta lluvia le llega a la camara ahora (0 dentro de la cabana o la torre).</summary>
+    public float LluviaEnCamara => intensidad * factorInterior;
+    /// <summary>1 = la camara esta fuera, 0 = dentro de la cabana o la torre (cambia suave). Lo usa el sonido.</summary>
+    public float FactorExterior => factorInterior;
+
     void LateUpdate()
     {
         if (cam == null) { if (Camera.main != null) cam = Camera.main.transform; else return; }
@@ -33,6 +38,7 @@ public class LluviaSigueCamara : MonoBehaviour
         if (zonasInterior != null)
             foreach (var z in zonasInterior) if (z != null && z.bounds.Contains(p)) { dentro = true; break; }
         factorInterior = Mathf.MoveTowards(factorInterior, dentro ? 0f : 1f, Time.deltaTime * suavizado);
+        NieblaVolumetricaFeature.FactorExterior = factorInterior;   // la bruma volumetrica baja bajo techo
 
         if (lluvia != null)
         {

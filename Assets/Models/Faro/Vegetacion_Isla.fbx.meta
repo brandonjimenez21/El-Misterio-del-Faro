@@ -7,6 +7,11 @@ ModelImporter:
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
+      name: M_Atrezzo_Corteza
+    second: {fileID: 2100000, guid: 18f79990ec6a4a243b249148628678c2, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
       name: M_Pasto
     second: {fileID: 2100000, guid: 51c4b565177997f44b70f4716978f206, type: 2}
   - first:

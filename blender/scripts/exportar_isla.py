@@ -13,5 +13,5 @@ isla.select_set(True)
 bpy.context.view_layer.objects.active = isla
 bpy.ops.export_scene.fbx(filepath=os.path.join(OUT, "Isla.fbx"), use_selection=True,
                          apply_scale_options='FBX_SCALE_ALL', bake_anim=True, add_leaf_bones=False,
-                         object_types={'EMPTY', 'MESH'}, path_mode='STRIP', use_tspace=True)
+                         object_types={'EMPTY', 'MESH'}, path_mode='STRIP', use_tspace=False)   # las tangentes las calcula Unity (Mikk)
 print("ISLA EXPORTADA")

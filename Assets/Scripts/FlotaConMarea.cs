@@ -1,7 +1,7 @@
 using UnityEngine;
 
 /// <summary>
-/// Hace que un objeto (bote, boya) flote: sigue la altura del oceano (mareas) y se balancea suavemente con las olas.
+/// Hace que un objeto (bote, boya) flote: sigue la altura del oceano (mareas y olas grandes de ClimaAgua) y se balancea suavemente con las olas.
 /// </summary>
 public class FlotaConMarea : MonoBehaviour
 {
@@ -12,7 +12,7 @@ public class FlotaConMarea : MonoBehaviour
     public float velocidad = 0.6f;
     public float oscilacionVertical = 0.06f;
 
-    float yBase, semilla, nivelInicial;
+    float yBase, semilla, nivelInicial, olaSuave;
     Quaternion rotBase;
 
     void Start()
@@ -29,7 +29,9 @@ public class FlotaConMarea : MonoBehaviour
         float t = Time.time * velocidad + semilla;
         float nivel = oceano != null ? oceano.position.y - nivelInicial : 0f;   // solo el cambio de marea
         var p = transform.position;
-        p.y = yBase + nivel + desfase + Mathf.Sin(t * 1.3f) * oscilacionVertical;
+        float ola = Mathf.Lerp(olaSuave, ClimaAgua.AlturaOla(p), 1f - Mathf.Exp(-Time.deltaTime * 4f));   // la ola grande lo levanta
+        olaSuave = ola;
+        p.y = yBase + nivel + desfase + ola + Mathf.Sin(t * 1.3f) * oscilacionVertical;
         transform.position = p;
         transform.rotation = rotBase * Quaternion.Euler(Mathf.Sin(t) * cabeceo, 0f, Mathf.Sin(t * 0.8f + 1f) * cabeceo * 0.7f);
     }

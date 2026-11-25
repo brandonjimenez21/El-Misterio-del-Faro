@@ -47,15 +47,53 @@ Material:
         m_Texture: {fileID: 2800000, guid: f4e1e86f818f689419a85d96d91809d8, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
+    - _TerArena:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _TerArenaN:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _TerHierba:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _TerHierbaN:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _TerTierra:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _TerTierraN:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
+    - _AltoMojado: 1.1
+    - _Debug: 0
     - _DistDetalle: 90
+    - _DistFino: 28
+    - _DistHierba: 100
+    - _DistLejos: 320
     - _EscalaPasto: 0.9
+    - _EscalaPasto3: 4.2
     - _EscalaRoca: 0.3
     - _EscalaRoca2: 1.4
+    - _EscalaRoca3: 6.5
+    - _EscalaTerreno: 0.5
     - _FuerzaColor: 0.9
     - _FuerzaNormal: 1.6
+    - _LejosSuelo: 0.7
     - _Modo: 1
+    - _NivelMar: -0.7
+    - _RelieveDatos: 0
+    - _SombraHierba: 0
+    - _VariacionMacro: 0.5
+    - _VientoArbol: 0
     m_Colors:
     - _Color: {r: 0.44, g: 0.47, b: 0.52, a: 1}
   m_BuildTextureStacks: []

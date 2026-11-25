@@ -15,6 +15,7 @@ public class LuzParpadeo : MonoBehaviour
     public Color colorEmision = new Color(1f, 0.35f, 0.08f);
     public float intensidadEmision = 2f;
 
+    [Tooltip("Multiplicador externo de la intensidad (LinternaTension lo baja en los apagones)")] public float factor = 1f;
     Light luz;
     float intensidadBase;
     Vector3 posBase;
@@ -35,13 +36,13 @@ public class LuzParpadeo : MonoBehaviour
         float t = Time.time * velocidad + semilla;
         float n = Mathf.PerlinNoise(t, semilla) * 0.7f + Mathf.PerlinNoise(t * 2.7f, semilla + 5f) * 0.3f;   // 0..1
         float f = 1f + (n - 0.5f) * 2f * variacion;
-        luz.intensity = intensidadBase * f;
+        luz.intensity = intensidadBase * f * factor;
         if (movimiento > 0f)
             transform.localPosition = posBase + new Vector3(Mathf.PerlinNoise(t, 1f) - 0.5f, Mathf.PerlinNoise(t, 2f) - 0.5f, Mathf.PerlinNoise(t, 3f) - 0.5f) * movimiento;
         if (rendererEmisivo != null)
         {
             rendererEmisivo.GetPropertyBlock(bloque);
-            bloque.SetColor("_EmissionColor", colorEmision * intensidadEmision * f);
+            bloque.SetColor("_EmissionColor", colorEmision * intensidadEmision * f * factor);
             rendererEmisivo.SetPropertyBlock(bloque);
         }
     }

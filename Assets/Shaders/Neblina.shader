@@ -26,6 +26,7 @@ Shader "Faro/Neblina"
                 half4 _Color;
                 float _Suavizado;
             CBUFFER_END
+            float _FaroRelampago;   // global (Relampagos.cs): la lluvia y la bruma se encienden con el relampago
 
             struct Attributes { float4 positionOS : POSITION; float2 uv : TEXCOORD0; half4 color : COLOR; };
             struct Varyings { float4 positionCS : SV_POSITION; float2 uv : TEXCOORD0; half4 color : COLOR; float4 screen : TEXCOORD1; };
@@ -48,7 +49,7 @@ Shader "Faro/Neblina"
                 float mia = IN.screen.w;
                 float fade = saturate((escena - mia) / _Suavizado);
                 half a = t.a * IN.color.a * _Color.a * fade;
-                return half4(_Color.rgb * IN.color.rgb, a);
+                return half4(_Color.rgb * IN.color.rgb * (1.0 + _FaroRelampago * 2.2), a);
             }
             ENDHLSL
         }
