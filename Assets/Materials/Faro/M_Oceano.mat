@@ -25,12 +25,12 @@ Material:
     m_TexEnvs: []
     m_Ints: []
     m_Floats:
-    - _Amp: 1.1246396
+    - _Amp: 0.9974864
     - _AnillosInt: 1
     - _Brillo: 450
     - _BrilloInt: 3
     - _Detalle: 0.035
-    - _Fuerza: 1.4256816
+    - _Fuerza: 1.1102468
     - _Orilla: 1.6
     - _OrillaInt: 0.9
     - _Velocidad: 1

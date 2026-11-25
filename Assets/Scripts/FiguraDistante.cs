@@ -33,6 +33,7 @@ public class FiguraDistante : MonoBehaviour
 
     int apariciones;
     bool visible;
+    public bool Visible { get { return visible; } }
     float mirando;
     Transform ultimoPunto;
 

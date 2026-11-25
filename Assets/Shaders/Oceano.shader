@@ -24,6 +24,8 @@ Shader "Faro/Oceano"
         // Cola transparente (pero sin mezcla) para leer la profundidad de lo opaco y pintar espuma donde el agua toca algo
         Tags { "RenderType"="Transparent" "RenderPipeline"="UniversalPipeline" "Queue"="Transparent-10" }
         ZWrite On
+        // marca en el stencil los pixeles donde lo que se ve es agua: Faro/BajoElAgua (tiburon) solo se dibuja ahi, detras de la superficie
+        Stencil { Ref 2 Comp Always Pass Replace }
         Pass
         {
             Name "ForwardLit"
